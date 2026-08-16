@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:assignment/core/theme/app_colors.dart';
+import 'package:assignment/core/theme/theme_provider.dart';
 import 'package:assignment/core/widgets/bmi_progress_ring.dart';
 import 'package:assignment/core/widgets/bottom_nav_bar.dart';
 import 'package:assignment/core/widgets/profile_avatar.dart';
 import 'package:assignment/features/profile/providers/profile_providers.dart';
 import 'package:assignment/features/profile/models/user_profile.dart';
+import 'package:assignment/features/history/models/weight_entry.dart';
 import 'package:assignment/features/settings/screens/settings_screen.dart';
 
 class BmiDashboardScreen extends ConsumerWidget {
@@ -93,7 +95,7 @@ class BmiDashboardScreen extends ConsumerWidget {
             right: 24,
             bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
-          decoration: const BoxDecoration(
+          decoration:  BoxDecoration(
             color: AppColors.cardBg,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(28),
@@ -116,8 +118,8 @@ class BmiDashboardScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                const Text(
+                SizedBox(height: 24),
+                 Text(
                   'Update Body Data',
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -126,10 +128,10 @@ class BmiDashboardScreen extends ConsumerWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   'Updating data for ${profile.name}',
-                  style: const TextStyle(
+                  style:  TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 14,
                   ),
@@ -215,6 +217,7 @@ class BmiDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(themeModeProvider); // force rebuild on theme changes
     final activeProfile = ref.watch(activeProfileProvider);
     final weightUnit = ref.watch(globalWeightUnitProvider);
     final heightUnit = ref.watch(globalHeightUnitProvider);
@@ -248,7 +251,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                     size: 80,
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'No Profile Setup Yet',
                     style: TextStyle(
                       fontSize: 22,
@@ -258,7 +261,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Complete your profile setup to start tracking your BMI and weight history.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
@@ -311,7 +314,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
+                      Text(
                         'Home',
                         style: TextStyle(
                           color: AppColors.textPrimary,
@@ -347,14 +350,16 @@ class BmiDashboardScreen extends ConsumerWidget {
               // Welcome Back Text
               Text(
                 '$greeting, ${activeProfile.name}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Ready to check your progress?',
                 style: TextStyle(
                   color: AppColors.textSecondary,
@@ -380,7 +385,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                 ),
                 child: Column(
                   children: [
-                    const Text(
+                    Text(
                       'YOUR BMI',
                       style: TextStyle(
                         color: AppColors.textSecondary,
@@ -434,11 +439,17 @@ class BmiDashboardScreen extends ConsumerWidget {
                                 ),
                               ],
                             ),
+                            _buildTrendInsight(weightEntries, activeProfile, weightUnit),
                             const SizedBox(height: 24),
-                            BmiProgressRing(
-                              bmi: value,
-                              size: 180,
-                              ringFraction: animatedFraction,
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final ringSize = (constraints.maxWidth * 0.7).clamp(140.0, 180.0);
+                                return BmiProgressRing(
+                                  bmi: value,
+                                  size: ringSize,
+                                  ringFraction: animatedFraction,
+                                );
+                              },
                             ),
                           ],
                         );
@@ -447,7 +458,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                     const SizedBox(height: 24),
                     Text(
                       message,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 14,
                         height: 1.4,
@@ -457,14 +468,12 @@ class BmiDashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-
               // Height and Weight Cards
               Row(
                 children: [
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       decoration: BoxDecoration(
                         color: AppColors.cardBg,
                         borderRadius: BorderRadius.circular(24),
@@ -480,16 +489,19 @@ class BmiDashboardScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.monitor_weight_outlined,
+                            children: [
+                              const Icon(Icons.monitor_weight_outlined,
                                   color: AppColors.primary, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Weight',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Weight',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -499,22 +511,25 @@ class BmiDashboardScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
                             children: [
-                              Text(
-                                weightUnit == 'lbs'
-                                    ? (activeProfile.weightKg / 0.453592).toStringAsFixed(1)
-                                    : activeProfile.weightKg.toStringAsFixed(1),
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
+                              Flexible(
+                                child: Text(
+                                  weightUnit == 'lbs'
+                                      ? (activeProfile.weightKg / 0.453592).toStringAsFixed(1)
+                                      : activeProfile.weightKg.toStringAsFixed(1),
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 weightUnit == 'lbs' ? 'lbs' : 'kg',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.textSecondary,
-                                  fontSize: 14,
+                                  fontSize: 13,
                                 ),
                               ),
                             ],
@@ -523,10 +538,10 @@ class BmiDashboardScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Container(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                       decoration: BoxDecoration(
                         color: AppColors.cardBg,
                         borderRadius: BorderRadius.circular(24),
@@ -542,15 +557,18 @@ class BmiDashboardScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            children: const [
-                              Icon(Icons.height, color: AppColors.primary, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Height',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+                            children: [
+                              const Icon(Icons.height, color: AppColors.primary, size: 20),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Height',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
@@ -560,22 +578,25 @@ class BmiDashboardScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
                             children: [
-                              Text(
-                                heightUnit == 'inches'
-                                    ? (activeProfile.heightCm / 2.54).toStringAsFixed(1)
-                                    : activeProfile.heightCm.toStringAsFixed(0),
-                                style: const TextStyle(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
+                              Flexible(
+                                child: Text(
+                                  heightUnit == 'inches'
+                                      ? (activeProfile.heightCm / 2.54).toStringAsFixed(1)
+                                      : activeProfile.heightCm.toStringAsFixed(0),
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 heightUnit == 'inches' ? 'in' : 'cm',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.textSecondary,
-                                  fontSize: 14,
+                                  fontSize: 13,
                                 ),
                               ),
                             ],
@@ -591,7 +612,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                 Center(
                   child: Text(
                     'Updated ${_formatRelativeTime(lastUpdate)}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 12,
                       fontWeight: FontWeight.w400,
@@ -613,6 +634,121 @@ class BmiDashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTrendInsight(List<WeightEntry> weightEntries, UserProfile activeProfile, String weightUnit) {
+    final profileEntries = weightEntries
+        .where((e) => e.profileId == activeProfile.id)
+        .toList();
+
+    // Sort by date descending (newest first)
+    profileEntries.sort((a, b) => b.date.compareTo(a.date));
+
+    if (profileEntries.length < 2) {
+      return Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: AppColors.isDarkMode ? const Color(0xFF2C2C2C) : const Color(0xFFF3F4F6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.info_outline, color: AppColors.textSecondary, size: 14),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Log weight again in 7 days to see trends',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final latest = profileEntries.first;
+    // Look for first entry that is >= 5 days older than the latest entry
+    final now = latest.date;
+    
+    WeightEntry? comparisonEntry;
+    for (final entry in profileEntries) {
+      final diffDays = now.difference(entry.date).inDays;
+      if (diffDays >= 5 && diffDays <= 10) {
+        comparisonEntry = entry;
+        break;
+      }
+    }
+
+    // If no entry is in the 5-10 days window, find the oldest entry within the last 7 days, or the next oldest entry overall
+    comparisonEntry ??= profileEntries.firstWhere(
+      (e) => now.difference(e.date).inDays >= 1,
+      orElse: () => profileEntries.last,
+    );
+
+    final double latestDisplay = weightUnit == 'lbs' ? latest.weightKg / 0.453592 : latest.weightKg;
+    final double comparisonDisplay = weightUnit == 'lbs' ? comparisonEntry.weightKg / 0.453592 : comparisonEntry.weightKg;
+    
+    final diff = latestDisplay - comparisonDisplay;
+    final absDiff = diff.abs();
+
+    IconData icon;
+    Color color;
+    Color bgColor;
+    String text;
+
+    if (diff < -0.1) {
+      // Weight went down (health improvement)
+      icon = Icons.trending_down;
+      color = AppColors.isDarkMode ? const Color(0xFF4ADE80) : const Color(0xFF0F6E5C);
+      bgColor = AppColors.isDarkMode ? const Color(0xFF142F20) : const Color(0xFFE6F3F0);
+      text = '↓ ${absDiff.toStringAsFixed(1)} $weightUnit this week • BMI trending down 🎉';
+    } else if (diff > 0.1) {
+      // Weight went up
+      icon = Icons.trending_up;
+      color = AppColors.isDarkMode ? const Color(0xFFFBBF24) : const Color(0xFFD97706);
+      bgColor = AppColors.isDarkMode ? const Color(0xFF2E2214) : const Color(0xFFFFF7ED);
+      text = '↑ ${absDiff.toStringAsFixed(1)} $weightUnit this week • Stay active!';
+    } else {
+      // Stable weight
+      icon = Icons.trending_flat;
+      color = AppColors.textSecondary;
+      bgColor = AppColors.isDarkMode ? const Color(0xFF222222) : const Color(0xFFF3F4F6);
+      text = 'Weight stable this week • Consistent progress!';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }

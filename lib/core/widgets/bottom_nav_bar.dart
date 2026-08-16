@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:assignment/core/theme/app_colors.dart';
+import 'package:assignment/core/theme/theme_provider.dart';
 
 // Provider to manage bottom navigation index
 final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
 class CustomBottomNavBar extends ConsumerWidget {
-  const CustomBottomNavBar({super.key});
+  CustomBottomNavBar({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(themeModeProvider); // force rebuild on theme changes
     final activeIndex = ref.watch(bottomNavIndexProvider);
 
     return Container(

@@ -7,6 +7,7 @@ import 'package:assignment/core/widgets/bottom_nav_bar.dart';
 import 'package:assignment/core/widgets/profile_avatar.dart';
 import 'package:assignment/features/auth/auth_provider.dart';
 import 'package:assignment/features/profile/providers/profile_providers.dart';
+import 'package:assignment/core/theme/theme_provider.dart';
 
 // ─── Preferences providers (persisted in Hive 'settings' box) ────────────────
 final notificationsEnabledProvider = StateProvider<bool>((ref) {
@@ -32,6 +33,12 @@ class SettingsScreen extends ConsumerWidget {
     final notificationsEnabled = ref.watch(notificationsEnabledProvider);
     final weightUnit = ref.watch(globalWeightUnitProvider);
     final heightUnit = ref.watch(globalHeightUnitProvider);
+    final themeMode = ref.watch(themeModeProvider);
+    final themeModeName = themeMode == ThemeMode.dark
+        ? 'Dark'
+        : themeMode == ThemeMode.system
+            ? 'System'
+            : 'Light';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -44,7 +51,7 @@ class SettingsScreen extends ConsumerWidget {
               // ── Top Header ──────────────────────────────────────────────────
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       'Settings',
                       style: TextStyle(
@@ -138,6 +145,26 @@ class SettingsScreen extends ConsumerWidget {
                     Hive.box('settings').put('global_height_unit', stored);
                   },
                 ),
+                _divider(),
+                // Theme Mode
+                _unitToggleRow(
+                  icon: Icons.dark_mode_outlined,
+                  iconBg: const Color(0xFF6C7A8D),
+                  label: 'Theme Mode',
+                  options: const ['Light', 'Dark', 'System'],
+                  selected: themeModeName,
+                  onSelect: (v) {
+                    ThemeMode mode;
+                    if (v == 'Dark') {
+                      mode = ThemeMode.dark;
+                    } else if (v == 'System') {
+                      mode = ThemeMode.system;
+                    } else {
+                      mode = ThemeMode.light;
+                    }
+                    ref.read(themeModeProvider.notifier).setThemeMode(mode);
+                  },
+                ),
               ]),
 
               const SizedBox(height: 28),
@@ -183,7 +210,7 @@ class SettingsScreen extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 10, left: 4),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.textSecondary,
           fontSize: 12,
           fontWeight: FontWeight.bold,
@@ -214,7 +241,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   static Widget _divider() {
-    return const Divider(height: 1, indent: 60, endIndent: 0, color: Color(0xFFEEEEEE));
+    return Divider(height: 1, indent: 60, endIndent: 0, color: AppColors.borderLight);
   }
 
   // ─── Tappable nav row ───────────────────────────────────────────────────────
@@ -237,7 +264,7 @@ class SettingsScreen extends ConsumerWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
@@ -264,11 +291,11 @@ class SettingsScreen extends ConsumerWidget {
       child: Row(
         children: [
           _iconBox(icon, iconBg),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
@@ -306,7 +333,7 @@ class SettingsScreen extends ConsumerWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
@@ -359,9 +386,11 @@ class SettingsScreen extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF0F0),
+          color: AppColors.isDarkMode ? const Color(0xFF2C1E1E) : const Color(0xFFFFF0F0),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFFFDADA)),
+          border: Border.all(
+            color: AppColors.isDarkMode ? Color(0xFF4C2A2A) : Color(0xFFFFDADA),
+          ),
         ),
         child: Row(
           children: [
@@ -393,7 +422,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.warning, size: 20),
+            Icon(Icons.chevron_right, color: AppColors.warning, size: 20),
           ],
         ),
       ),
@@ -452,7 +481,7 @@ class SettingsScreen extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Enter your email address and we will send you a password reset link.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
@@ -501,7 +530,7 @@ class SettingsScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const SingleChildScrollView(
+        content: SingleChildScrollView(
           child: Text(
             'BMI Health collects and stores your name, weight, height, and gender locally on your device using secure local storage. No personal health data is transmitted to external servers.\n\n'
             'Your data is used solely to calculate and track your BMI and health metrics within the app. You may delete your profile and all associated data at any time from the Profiles section.\n\n'

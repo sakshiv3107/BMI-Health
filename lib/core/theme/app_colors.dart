@@ -3,19 +3,21 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
+  static bool isDarkMode = false;
+
   // Primary / Accent colors
   static const Color primary = Color(0xFF0F6E5C); // Deep teal
   static const Color primaryAccent = Color(0xFF0D8A6E); // BMI value teal
-  static const Color primaryLight = Color(0xFFE6F3F0); // Light teal/emerald tint
+  static Color get primaryLight => isDarkMode ? const Color(0xFF163E36) : const Color(0xFFE6F3F0); // Light teal/emerald tint
 
   // Backgrounds & Surfaces
-  static const Color background = Color(0xFFF5F6F7); // Very light gray background
-  static const Color cardBg = Color(0xFFFFFFFF); // White card background
-  static const Color fillLight = Color(0xFFF3F4F6); // Light gray fill for inputs
+  static Color get background => isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F6F7); // Very light gray background
+  static Color get cardBg => isDarkMode ? const Color(0xFF1E1E1E) : const Color(0xFFFFFFFF); // White card background
+  static Color get fillLight => isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFF3F4F6); // Light gray fill for inputs
 
   // Text colors
-  static const Color textPrimary = Color(0xFF1A1A1A); // Dark charcoal for headings
-  static const Color textSecondary = Color(0xFF6B7280); // Gray for subtext
+  static Color get textPrimary => isDarkMode ? const Color(0xFFFFFFFF) : const Color(0xFF1A1A1A); // Dark charcoal for headings
+  static Color get textSecondary => isDarkMode ? const Color(0xFFB0B0B0) : const Color(0xFF6B7280); // Gray for subtext
 
   // Indicator & Status colors
   static const Color success = Color(0xFF0F6E5C); // Teal green success
@@ -47,6 +49,6 @@ class AppColors {
   // Bottom Navigation
   static const Color navActive = Color(0xFF0F6E5C);
   static const Color navInactive = Color(0xFF9CA3AF);
-  static const Color borderLight = Color(0xFFE5E7EB);
+  static Color get borderLight => isDarkMode ? const Color(0xFF2C2C2C) : const Color(0xFFE5E7EB);
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:assignment/core/theme/app_colors.dart';
+import 'package:assignment/core/theme/theme_provider.dart';
 import 'package:assignment/core/widgets/bottom_nav_bar.dart';
 import 'package:assignment/core/widgets/profile_avatar.dart';
 import 'package:assignment/features/profile/providers/profile_providers.dart';
@@ -17,7 +18,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
       builder: (context) {
         return Container(
           padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             color: AppColors.cardBg,
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(28),
@@ -30,7 +31,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
             children: [
               Text(
                 'Options for ${profile.name}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -95,6 +96,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(themeModeProvider); // force rebuild on theme changes
     final profiles = ref.watch(allProfilesProvider);
     final activeProfile = ref.watch(activeProfileProvider);
 
@@ -126,7 +128,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
+                      Text(
                         'Profiles',
                         style: TextStyle(
                           color: AppColors.textPrimary,
@@ -147,7 +149,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
               const SizedBox(height: 24),
 
               // Title Header
-              const Text(
+              Text(
                 'Profile Switcher',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -156,7 +158,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Track health metrics separately for different family members.',
                 style: TextStyle(
                   color: AppColors.textSecondary,
@@ -166,7 +168,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
               const SizedBox(height: 24),
 
               // Profiles List Section
-              const Text(
+              Text(
                 'AVAILABLE PROFILES',
                 style: TextStyle(
                   color: AppColors.textSecondary,
@@ -188,13 +190,13 @@ class ProfileSwitcherScreen extends ConsumerWidget {
                 )
               else
                 Container(
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  padding: EdgeInsets.symmetric(vertical: 24, horizontal: 16),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.grey[200]!),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Text(
                       'No profiles added yet. Tap Add Profile below to create one.',
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -240,7 +242,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: isActive ? AppColors.primaryLight : AppColors.cardBg,
           borderRadius: BorderRadius.circular(24),
@@ -271,14 +273,19 @@ class ProfileSwitcherScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Name + Active badge
                       Row(
                         children: [
-                          Text(
-                            profile.name,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Flexible(
+                            child: Text(
+                              profile.name,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -312,12 +319,15 @@ class ProfileSwitcherScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Text(
-                            'BMI: ${profile.bmi.toStringAsFixed(1)} (${profile.bmiCategory})',
-                            style: TextStyle(
-                              color: AppColors.getBmiColor(profile.bmi),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                          Flexible(
+                            child: Text(
+                              'BMI: ${profile.bmi.toStringAsFixed(1)} (${profile.bmiCategory})',
+                              style: TextStyle(
+                                color: AppColors.getBmiColor(profile.bmi),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -325,10 +335,12 @@ class ProfileSwitcherScreen extends ConsumerWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Weight: ${profile.weightKg.toStringAsFixed(1)} kg   •   Height: ${profile.heightCm.toStringAsFixed(0)} cm',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 13,
                         ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
                       ),
                     ],
                   ),
@@ -364,7 +376,7 @@ class ProfileSwitcherScreen extends ConsumerWidget {
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
-                    icon: const Icon(Icons.more_vert, color: AppColors.textSecondary, size: 20),
+                    icon: Icon(Icons.more_vert, color: AppColors.textSecondary, size: 20),
                     onPressed: () => _showProfileOptions(context, ref, profile, activeProfile),
                   ),
                 ],

@@ -4,24 +4,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:assignment/firebase_options.dart';
 import 'package:assignment/app_router.dart';
+import 'package:assignment/core/theme/app_colors.dart';
 import 'package:assignment/core/theme/app_theme.dart';
+import 'package:assignment/core/theme/theme_provider.dart';
 import 'package:assignment/features/profile/models/user_profile.dart';
 import 'package:assignment/features/history/models/weight_entry.dart';
+import 'package:assignment/core/widgets/initialization_skeleton.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+final appInitializationProvider = FutureProvider<void>((ref) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Hive.initFlutter();
   
   // Register generated Hive adapters
-  Hive.registerAdapter(UserProfileAdapter());
-  Hive.registerAdapter(WeightEntryAdapter());
+  try {
+    Hive.registerAdapter(UserProfileAdapter());
+  } catch (_) {}
+  try {
+    Hive.registerAdapter(WeightEntryAdapter());
+  } catch (_) {}
 
   // Open Hive boxes
   await Hive.openBox<UserProfile>('profiles');
   await Hive.openBox<WeightEntry>('weight_entries');
   await Hive.openBox('settings');
+});
 
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -30,14 +39,41 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final goRouter = ref.watch(goRouterProvider);
+    final init = ref.watch(appInitializationProvider);
 
-    return MaterialApp.router(
-      title: 'BMI Health Tracker',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      themeMode: ThemeMode.light,
-      routerConfig: goRouter,
+    return init.when(
+      data: (_) {
+        final goRouter = ref.watch(goRouterProvider);
+        final themeMode = ref.watch(themeModeProvider);
+
+        // Synchronize dynamic theme state back to AppColors
+        AppColors.isDarkMode = themeMode == ThemeMode.dark ||
+            (themeMode == ThemeMode.system &&
+                MediaQuery.platformBrightnessOf(context) == Brightness.dark);
+
+        return MaterialApp.router(
+          title: 'BMI Health Tracker',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: themeMode,
+          routerConfig: goRouter,
+        );
+      },
+      loading: () => const MaterialApp(
+        title: 'BMI Health Tracker',
+        debugShowCheckedModeBanner: false,
+        home: InitializationSkeletonScreen(),
+      ),
+      error: (err, stack) => MaterialApp(
+        title: 'BMI Health Tracker',
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          body: Center(
+            child: Text('Initialization Error: $err'),
+          ),
+        ),
+      ),
     );
   }
 }

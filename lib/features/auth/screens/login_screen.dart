@@ -86,7 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                     Text(
                       'BMI Health',
                       style: TextStyle(
                         color: AppColors.textPrimary,
@@ -96,7 +96,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 36),
+                SizedBox(height: 36),
 
                 // Centered logo in white rounded box
                 Center(
@@ -124,7 +124,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 24),
 
                 // Welcome back header & subtext
-                const Text(
+                 Text(
                   'Welcome Back',
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -134,7 +134,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                 Text(
                   'Understand your body. Track your progress with clarity.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
@@ -200,47 +200,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: Checkbox(
-                            value: _rememberMe,
-                            activeColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: _rememberMe,
+                              activeColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              onChanged: (val) {
+                                setState(() {
+                                  _rememberMe = val ?? false;
+                                });
+                              },
                             ),
-                            onChanged: (val) {
-                              setState(() {
-                                _rememberMe = val ?? false;
-                              });
-                            },
                           ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              'Remember me',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 14,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: TextButton(
+                        onPressed: () => context.push('/forgot-password'),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Remember me',
+                        child: const Text(
+                          'Forgot password?',
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
-                        ),
-                      ],
-                    ),
-                    TextButton(
-                      onPressed: () => context.push('/forgot-password'),
-                      style: TextButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text(
-                        'Forgot password?',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -328,7 +338,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                     Text(
                       "Don't have an account? ",
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                     ),
@@ -348,7 +358,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 36),
 
                 // Terms of service text at bottom
-                const Text(
+                 Text(
                   'By signing in, you agree to our Terms of Service and Privacy Policy',
                   style: TextStyle(
                     color: AppColors.textSecondary,

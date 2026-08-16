@@ -88,7 +88,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
+                     Text(
                       'BMI Health',
                       style: TextStyle(
                         color: AppColors.textPrimary,
@@ -98,7 +98,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: 28),
 
                 // Centered logo in white rounded box
                 Center(
@@ -126,7 +126,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 const SizedBox(height: 24),
 
                 // Title & Subtext
-                const Text(
+                 Text(
                   'Create Account',
                   style: TextStyle(
                     color: AppColors.textPrimary,
@@ -136,7 +136,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                 Text(
                   'Start tracking your body mass index and health progress.',
                   style: TextStyle(
                     color: AppColors.textSecondary,
@@ -309,7 +309,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
+                     Text(
                       'Already have an account? ',
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                     ),
@@ -329,7 +329,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                 const SizedBox(height: 36),
 
                 // Terms text
-                const Text(
+                 Text(
                   'By signing in, you agree to our Terms of Service and Privacy Policy',
                   style: TextStyle(
                     color: AppColors.textSecondary,

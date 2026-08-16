@@ -322,7 +322,7 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.w600,
           color: AppColors.textSecondary,
@@ -461,7 +461,10 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                   fontWeight: FontWeight.w600,
                   color: selected ? Colors.white : AppColors.textSecondary,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
+
             ],
           ),
         ),
@@ -494,10 +497,10 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+                icon: Icon(Icons.arrow_back, color: AppColors.textPrimary),
                 onPressed: () => context.pop(),
               ),
-              title: const Text(
+              title: Text(
                 'Edit Profile',
                 style: TextStyle(
                   color: AppColors.textPrimary,
@@ -545,7 +548,7 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
 
                   Text(
                     _isEditMode ? 'Update Profile Details' : 'Set Up Your Profile',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
@@ -557,7 +560,7 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                     _isEditMode
                         ? 'Modify the details for this profile.'
                         : 'Welcome to BMI Health! Enter your details below to create a new health tracking profile.',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,
                     ),
@@ -567,7 +570,7 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
 
                   // ── Form Card ────────────────────────────────────────────
                   Container(
-                    padding: const EdgeInsets.all(24),
+                    padding: EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: AppColors.cardBg,
                       borderRadius: BorderRadius.circular(24),
@@ -656,7 +659,7 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                               const SizedBox(height: 10),
                               Text(
                                 _pickedPhotoBase64 != null ? 'Tap photo to change' : 'Add Profile Photo',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 12,
                                 ),

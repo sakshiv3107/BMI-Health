@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:assignment/core/theme/app_colors.dart';
+import 'package:assignment/core/theme/theme_provider.dart';
 import 'package:assignment/features/profile/providers/profile_providers.dart';
 import 'package:assignment/features/history/models/weight_entry.dart';
 import 'package:assignment/features/profile/models/user_profile.dart';
@@ -33,6 +34,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
     final weightController = TextEditingController(text: displayWeight.toStringAsFixed(1));
     final formKey = GlobalKey<FormState>();
     _selectedDate = DateTime.now();
+    String selectedUnit = weightUnit;
 
     showModalBottomSheet(
       context: context,
@@ -48,7 +50,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                 right: 24,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 24,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.cardBg,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(28),
@@ -72,7 +74,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Log Weight Entry',
                       style: TextStyle(
                         color: AppColors.textPrimary,
@@ -80,91 +82,139 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: weightController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Weight (${weightUnit == 'lbs' ? 'lbs' : 'kg'})',
-                    prefixIcon: const Icon(Icons.monitor_weight_outlined),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Enter weight';
-                    final val = double.tryParse(value);
-                    if (val == null || val <= 0) return 'Enter a valid weight';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      initialDate: _selectedDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (picked != null) {
-                      setModalState(() {
-                        _selectedDate = picked;
-                      });
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.fillLight,
-                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    const SizedBox(height: 24),
+                    Row(
                       children: [
-                        Row(
-                          children: const [
-                            Icon(Icons.calendar_today_outlined, color: AppColors.textSecondary, size: 20),
-                            SizedBox(width: 12),
-                            Text('Entry Date', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
-                          ],
+                        Expanded(
+                          child: TextFormField(
+                            controller: weightController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              labelText: 'Weight',
+                              prefixIcon: Icon(Icons.monitor_weight_outlined),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) return 'Enter weight';
+                              final val = double.tryParse(value);
+                              if (val == null || val <= 0) return 'Enter a valid weight';
+                              return null;
+                            },
+                          ),
                         ),
-                        Text(
-                          DateFormat('MMM dd, yyyy').format(_selectedDate),
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                        const SizedBox(width: 16),
+                        Container(
+                          height: 48,
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.fillLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ToggleButtons(
+                            isSelected: [selectedUnit == 'kg', selectedUnit == 'lbs'],
+                            onPressed: (index) {
+                              final newUnit = index == 0 ? 'kg' : 'lbs';
+                              if (newUnit == selectedUnit) return;
+                              setModalState(() {
+                                final currentVal = double.tryParse(weightController.text);
+                                if (currentVal != null) {
+                                  if (newUnit == 'kg' && selectedUnit == 'lbs') {
+                                    weightController.text = (currentVal * 0.453592).toStringAsFixed(1);
+                                  } else if (newUnit == 'lbs' && selectedUnit == 'kg') {
+                                    weightController.text = (currentVal / 0.453592).toStringAsFixed(1);
+                                  }
+                                }
+                                selectedUnit = newUnit;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            fillColor: AppColors.primary,
+                            selectedColor: Colors.white,
+                            color: AppColors.textSecondary,
+                            renderBorder: false,
+                            children: const [
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('kg', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                child: Text('lbs', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState!.validate()) {
-                      final displayW = double.parse(weightController.text);
-                      // Convert to canonical kg before storing
-                      final weight = weightUnit == 'lbs' ? displayW * 0.453592 : displayW;
-                      await ref.read(weightEntriesProvider.notifier).addEntry(
-                            profile.id,
-                            weight,
-                            customDate: _selectedDate,
-                          );
-
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Weight logged successfully!'),
-                            backgroundColor: AppColors.primary,
-                          ),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _selectedDate,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now(),
                         );
-                      }
-                    }
-                  },
-                  child: const Text('Log Entry'),
-                ),
+                        if (picked != null) {
+                          setModalState(() {
+                            _selectedDate = picked;
+                          });
+                        }
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.fillLight,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today_outlined, color: AppColors.textSecondary, size: 20),
+                                SizedBox(width: 12),
+                                Text('Entry Date', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+                              ],
+                            ),
+                            Text(
+                              DateFormat('MMM dd, yyyy').format(_selectedDate),
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          final displayW = double.parse(weightController.text);
+                          // Convert to canonical kg before storing
+                          final weight = selectedUnit == 'lbs' ? displayW * 0.453592 : displayW;
+                          await ref.read(weightEntriesProvider.notifier).addEntry(
+                                profile.id,
+                                weight,
+                                customDate: _selectedDate,
+                              );
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Weight logged successfully!'),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Log Entry'),
+                    ),
                   ],
                 ),
               ),
@@ -177,6 +227,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(themeModeProvider); // force rebuild on theme changes
     final activeProfile = ref.watch(activeProfileProvider);
     final allEntries = ref.watch(weightEntriesProvider);
     final weightUnit = ref.watch(globalWeightUnitProvider);
@@ -201,6 +252,14 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
     final listEntries = List<WeightEntry>.from(activeEntries)
       ..sort((a, b) => b.date.compareTo(a.date));
 
+    // Determine if all entries are on the same day (for chart formatting)
+    final bool allSameDay = chartEntries.isNotEmpty &&
+        chartEntries.every((e) =>
+            e.date.year == chartEntries.first.date.year &&
+            e.date.month == chartEntries.first.date.month &&
+            e.date.day == chartEntries.first.date.day);
+    final DateFormat chartDateFormat = allSameDay ? DateFormat('h:mm a') : DateFormat('dd/MM');
+
     // Create spots for line chart — convert to display unit
     final spots = <FlSpot>[];
     for (int i = 0; i < chartEntries.length; i++) {
@@ -219,10 +278,52 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
       final minYVal = yValues.reduce((a, b) => a < b ? a : b);
       final maxYVal = yValues.reduce((a, b) => a > b ? a : b);
       final yRange = maxYVal - minYVal;
-      final buffer = yRange > 0 ? (yRange * 0.18).clamp(3.0, 15.0) : 5.0;
-      minYSetting = (minYVal - buffer).floorToDouble();
-      maxYSetting = (maxYVal + buffer).ceilToDouble();
-      yIntervalSetting = ((maxYSetting - minYSetting) / 4).clamp(1.0, 100.0);
+
+      double interval = 10.0;
+      if (weightUnit == 'lbs') {
+        if (yRange <= 5) {
+          interval = 1.0;
+        } else if (yRange <= 15) {
+          interval = 2.0;
+        } else if (yRange <= 40) {
+          interval = 5.0;
+        } else if (yRange <= 100) {
+          interval = 10.0;
+        } else {
+          interval = 20.0;
+        }
+      } else {
+        // kg
+        if (yRange <= 2) {
+          interval = 0.5;
+        } else if (yRange <= 6) {
+          interval = 1.0;
+        } else if (yRange <= 15) {
+          interval = 2.0;
+        } else if (yRange <= 40) {
+          interval = 5.0;
+        } else {
+          interval = 10.0;
+        }
+      }
+
+      final double paddedMin = minYVal - (yRange > 0 ? yRange * 0.1 : 2.0);
+      final double paddedMax = maxYVal + (yRange > 0 ? yRange * 0.1 : 2.0);
+
+      minYSetting = (paddedMin / interval).floor() * interval;
+      maxYSetting = (paddedMax / interval).ceil() * interval;
+
+      if (minYSetting < 0) {
+        minYSetting = 0;
+      }
+
+      if (minYSetting == maxYSetting) {
+        minYSetting -= interval;
+        maxYSetting += interval;
+        if (minYSetting < 0) minYSetting = 0;
+      }
+
+      yIntervalSetting = interval;
     }
 
     return Scaffold(
@@ -253,7 +354,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      const Text(
+                      Text(
                         'History',
                         style: TextStyle(
                           color: AppColors.textPrimary,
@@ -272,14 +373,16 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
               const SizedBox(height: 16),
               Text(
                 'Weight Log for ${activeProfile.name}',
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'View weight fluctuations and progress trend lines.',
                 style: TextStyle(
                   color: AppColors.textSecondary,
@@ -288,9 +391,10 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Line Chart Card
-              if (spots.length >= 2)
+              // Chart Card or Empty State
+              if (spots.length >= 2) ...[
                 Container(
+                  width: double.infinity,
                   height: 200,
                   padding: const EdgeInsets.only(top: 24, bottom: 8, right: 24, left: 12),
                   decoration: BoxDecoration(
@@ -298,7 +402,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.015),
+                        color: Colors.black.withValues(alpha: 0.015),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -310,12 +414,18 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                       maxY: maxYSetting,
                       lineTouchData: LineTouchData(
                         touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (touchedSpot) => AppColors.primary.withOpacity(0.9),
+                          getTooltipColor: (touchedSpot) => AppColors.primary.withValues(alpha: 0.95),
                           tooltipRoundedRadius: 8,
                           getTooltipItems: (touchedSpots) {
                             return touchedSpots.map((LineBarSpot touchedSpot) {
+                              final idx = touchedSpot.x.toInt();
+                              String dateStr = '';
+                              if (idx >= 0 && idx < chartEntries.length) {
+                                final date = chartEntries[idx].date;
+                                dateStr = DateFormat('MMM dd, yyyy').format(date);
+                              }
                               return LineTooltipItem(
-                                '${touchedSpot.y.toStringAsFixed(1)} ${weightUnit == 'lbs' ? 'lbs' : 'kg'}',
+                                '$dateStr\n${touchedSpot.y.toStringAsFixed(1)} ${weightUnit == 'lbs' ? 'lbs' : 'kg'}',
                                 const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -329,6 +439,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                       gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
+                        horizontalInterval: yIntervalSetting,
                         getDrawingHorizontalLine: (value) => FlLine(
                           color: Colors.grey[200]!,
                           strokeWidth: 1,
@@ -350,8 +461,8 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                                 return SideTitleWidget(
                                   axisSide: meta.axisSide,
                                   child: Text(
-                                    DateFormat('dd/MM').format(chartEntries[idx].date),
-                                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                                    chartDateFormat.format(chartEntries[idx].date),
+                                    style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
                                   ),
                                 );
                               }
@@ -364,9 +475,10 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                             showTitles: true,
                             interval: yIntervalSetting,
                             getTitlesWidget: (value, meta) {
+                              final label = value % 1 == 0 ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
                               return Text(
-                                '${value.toStringAsFixed(0)} ${weightUnit == 'lbs' ? 'lbs' : 'kg'}',
-                                style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                                '$label ${weightUnit == 'lbs' ? 'lbs' : 'kg'}',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 10),
                               );
                             },
                             reservedSize: 48,
@@ -378,7 +490,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                         LineChartBarData(
                           spots: spots,
                           isCurved: true,
-                          curveSmoothness: 0.35,
+                          curveSmoothness: 0.2,
                           preventCurveOverShooting: true,
                           color: AppColors.primary,
                           barWidth: 4,
@@ -386,18 +498,18 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                           dotData: FlDotData(
                             show: true,
                             getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                              radius: 5,
-                              color: Colors.white,
-                              strokeWidth: 3,
-                              strokeColor: AppColors.primary,
+                              radius: 6,
+                              color: AppColors.primary,
+                              strokeWidth: 2,
+                              strokeColor: Colors.white,
                             ),
                           ),
                           belowBarData: BarAreaData(
                             show: true,
                             gradient: LinearGradient(
                               colors: [
-                                AppColors.primary.withOpacity(0.18),
-                                AppColors.primary.withOpacity(0.00),
+                                AppColors.primary.withValues(alpha: 0.18),
+                                AppColors.primary.withValues(alpha: 0.00),
                               ],
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
@@ -407,71 +519,100 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                       ],
                     ),
                   ),
-                )
-              else
-                Container(
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBg,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.grey[200]!),
+                ),
+
+                const SizedBox(height: 20),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: listEntries.length,
+                    itemBuilder: (context, index) {
+                      final entry = listEntries[index];
+                      // calculate BMI for that specific weight entry
+                      final itemBmi = activeProfile.heightCm > 0
+                          ? entry.weightKg / ((activeProfile.heightCm / 100) * (activeProfile.heightCm / 100))
+                          : 0.0;
+
+                      final prevEntry = index < listEntries.length - 1 ? listEntries[index + 1] : null;
+                      final double? deltaKg = prevEntry != null ? entry.weightKg - prevEntry.weightKg : null;
+
+                      return Dismissible(
+                        key: Key(entry.id),
+                        direction: DismissDirection.endToStart,
+                        background: Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: AppColors.warning,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          alignment: Alignment.centerRight,
+                          child: const Icon(Icons.delete, color: Colors.white),
+                        ),
+                        onDismissed: (direction) {
+                          ref.read(weightEntriesProvider.notifier).deleteEntry(entry.id);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Weight entry deleted')),
+                          );
+                        },
+                        child: _buildLogCard(
+                          entry: entry,
+                          bmi: itemBmi,
+                          category: _bmiCategory(itemBmi),
+                          isNormal: itemBmi >= 18.5 && itemBmi < 25.0,
+                          weightUnit: weightUnit,
+                          heightUnit: heightUnit,
+                          deltaKg: deltaKg,
+                          heightCm: activeProfile.heightCm,
+                        ),
+                      );
+                    },
                   ),
-                  child: const Center(
-                    child: Text(
-                      'Log weight at least twice to render a trend chart.',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+              ] else ...[
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.trending_up,
+                              color: AppColors.primary,
+                              size: 48,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Text(
+                            'Log your first weight to start tracking trends',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tap the "+" button in the top right to log a new weight entry.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-
-              const SizedBox(height: 20),
-
-              // Entries List
-              Expanded(
-                child: listEntries.isNotEmpty
-                    ? ListView.builder(
-                        itemCount: listEntries.length,
-                        itemBuilder: (context, index) {
-                          final entry = listEntries[index];
-                          // calculate BMI for that specific weight entry
-                          final itemBmi = activeProfile.heightCm > 0
-                              ? entry.weightKg / ((activeProfile.heightCm / 100) * (activeProfile.heightCm / 100))
-                              : 0.0;
-
-                          return Dismissible(
-                            key: Key(entry.id),
-                            direction: DismissDirection.endToStart,
-                            background: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning,
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              alignment: Alignment.centerRight,
-                              child: const Icon(Icons.delete, color: Colors.white),
-                            ),
-                            onDismissed: (direction) {
-                              ref.read(weightEntriesProvider.notifier).deleteEntry(entry.id);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Weight entry deleted')),
-                              );
-                            },
-                            child: _buildLogCard(
-                              date: DateFormat('MMM dd, yyyy  •  hh:mm a').format(entry.date),
-                              weightKg: entry.weightKg,
-                              heightCm: activeProfile.heightCm,
-                              bmi: itemBmi,
-                              category: _bmiCategory(itemBmi),
-                              isNormal: itemBmi >= 18.5 && itemBmi < 25.0,
-                              weightUnit: weightUnit,
-                              heightUnit: heightUnit,
-                            ),
-                          );
-                        },
-                      )
-                    : const Center(child: Text('No logged entries. Tap "+" above to log weight.')),
-              ),
+              ],
             ],
           ),
         ),
@@ -480,103 +621,181 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
   }
 
   Widget _buildLogCard({
-    required String date,
-    required double weightKg,
-    required double heightCm,
+    required WeightEntry entry,
     required double bmi,
     required String category,
     required bool isNormal,
     required String weightUnit,
     required String heightUnit,
+    required double? deltaKg,
+    required double heightCm,
   }) {
     // Convert to display units
-    final displayWeight = weightUnit == 'lbs' ? weightKg / 0.453592 : weightKg;
+    final displayWeight = weightUnit == 'lbs' ? entry.weightKg / 0.453592 : entry.weightKg;
     final displayHeight = heightUnit == 'inches' ? heightCm / 2.54 : heightCm;
     final weightLabel = weightUnit == 'lbs' ? 'lbs' : 'kg';
     final heightLabel = heightUnit == 'inches' ? 'in' : 'cm';
+
+    final Widget deltaWidget;
+    if (deltaKg != null && deltaKg.abs() > 0.001) {
+      final double displayDelta = weightUnit == 'lbs'
+          ? (deltaKg / 0.453592).abs()
+          : deltaKg.abs();
+      final bool isDown = deltaKg < 0;
+      final String deltaText = '${isDown ? '↓' : '↑'} ${displayDelta.toStringAsFixed(1)} $weightLabel';
+
+      deltaWidget = Container(
+        margin: const EdgeInsets.only(left: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: (isDown ? AppColors.success : AppColors.warning).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          deltaText,
+          style: TextStyle(
+            color: isDown ? AppColors.success : AppColors.warning,
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    } else {
+      deltaWidget = const SizedBox.shrink();
+    }
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.015),
+            color: Colors.black.withValues(alpha: 0.015),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                date,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+          // ── Left column: date / weight / height / delta ──────────────────
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Date + time
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        DateFormat('MMM dd, yyyy').format(entry.date),
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      DateFormat('h:mm a').format(entry.date),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Text(
-                    '${displayWeight.toStringAsFixed(1)} $weightLabel',
-                    style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                // Delta badge on its own line so it never squeezes the date
+                if (deltaKg != null && deltaKg.abs() > 0.001)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: deltaWidget,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '•  ${displayHeight.toStringAsFixed(heightUnit == 'inches' ? 1 : 0)} $heightLabel',
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 14,
+                const SizedBox(height: 6),
+                // Weight · Height
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        '${displayWeight.toStringAsFixed(1)} $weightLabel',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text(
+                        '•',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      ),
+                    ),
+                    Flexible(
+                      child: Text(
+                        '${displayHeight.toStringAsFixed(heightUnit == 'inches' ? 1 : 0)} $heightLabel',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 12),
+          // ── Right column: BMI value + category badge ─────────────────────
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'BMI: ${bmi.toStringAsFixed(1)}',
+                bmi.toStringAsFixed(1),
                 style: const TextStyle(
                   color: AppColors.primaryAccent,
-                  fontSize: 16,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.getBmiColor(bmi),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.getBmiColor(bmi).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.getBmiColor(bmi),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    category,
-                    style: TextStyle(
-                      color: AppColors.getBmiColor(bmi),
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                    const SizedBox(width: 4),
+                    Text(
+                      category,
+                      style: TextStyle(
+                        color: AppColors.getBmiColor(bmi),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),

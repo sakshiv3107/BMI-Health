@@ -32,7 +32,7 @@ class BmiProgressRing extends StatelessWidget {
             painter: _BmiRingPainter(
               fraction: fraction,
               activeColor: AppColors.primary,
-              inactiveColor: const Color(0xFFE5E7EB), // light gray background arc
+              inactiveColor: AppColors.borderLight, // dark/light responsive background arc
               strokeWidth: 14.0,
             ),
           ),
@@ -40,11 +40,11 @@ class BmiProgressRing extends StatelessWidget {
           Container(
             width: size * 0.45,
             height: size * 0.45,
-            decoration: const BoxDecoration(
+            decoration:  BoxDecoration(
               color: AppColors.primaryLight,
               shape: BoxShape.circle,
             ),
-            child: const Icon(
+            child:  Icon(
               Icons.favorite,
               color: AppColors.primary,
               size: 32,
