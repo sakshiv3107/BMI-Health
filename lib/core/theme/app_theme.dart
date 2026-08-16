@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
   AppTheme._();
 
   static ThemeData get light {
+    final baseTextTheme = GoogleFonts.interTextTheme();
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
@@ -19,29 +21,47 @@ class AppTheme {
         onSurface: AppColors.textPrimary,
         error: AppColors.warning,
       ),
-      textTheme: const TextTheme(
-        headlineLarge: TextStyle(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.bold,
-          fontSize: 32,
+      textTheme: baseTextTheme.copyWith(
+        displayLarge: baseTextTheme.displayLarge?.copyWith(
+          color: AppColors.primaryAccent,
+          fontWeight: FontWeight.w800,
+          fontSize: 52,
+          letterSpacing: -1,
         ),
-        headlineMedium: TextStyle(
+        headlineLarge: baseTextTheme.headlineLarge?.copyWith(
           color: AppColors.textPrimary,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w700,
+          fontSize: 26,
+        ),
+        headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w700,
           fontSize: 24,
         ),
-        titleLarge: TextStyle(
+        titleLarge: baseTextTheme.titleLarge?.copyWith(
           color: AppColors.textPrimary,
-          fontWeight: FontWeight.bold,
+          fontWeight: FontWeight.w700,
           fontSize: 20,
         ),
-        bodyLarge: TextStyle(
+        titleMedium: baseTextTheme.titleMedium?.copyWith(
+          color: AppColors.textPrimary,
+          fontWeight: FontWeight.w600,
+          fontSize: 16,
+        ),
+        labelLarge: baseTextTheme.labelLarge?.copyWith(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+          fontSize: 12,
+          letterSpacing: 1.2,
+        ),
+        bodyLarge: baseTextTheme.bodyLarge?.copyWith(
           color: AppColors.textPrimary,
           fontSize: 16,
         ),
-        bodyMedium: TextStyle(
+        bodyMedium: baseTextTheme.bodyMedium?.copyWith(
           color: AppColors.textSecondary,
           fontSize: 14,
+          fontWeight: FontWeight.w400,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(

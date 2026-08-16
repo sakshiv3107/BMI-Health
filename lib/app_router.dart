@@ -6,7 +6,7 @@ import 'package:assignment/features/auth/screens/login_screen.dart';
 import 'package:assignment/features/auth/screens/signup_screen.dart';
 import 'package:assignment/features/auth/forgot_password_screen.dart';
 import 'package:assignment/features/home/screens/main_shell.dart';
-import 'package:assignment/features/profile/screens/user_details_setup_screen.dart';
+import 'package:assignment/features/profile/screens/user_details_form_screen.dart';
 import 'package:assignment/features/profile/providers/profile_providers.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -37,11 +37,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // If user has a profile but tries to go to setup page, send to home
-      if (state.matchedLocation == '/user-details') {
-        return '/';
-      }
-
       if (isLoggingIn) {
         return '/';
       }
@@ -67,7 +62,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/user-details',
-        builder: (context, state) => const UserDetailsSetupScreen(),
+        builder: (context, state) {
+          final profileId = state.uri.queryParameters['profileId'];
+          return UserDetailsFormScreen(profileId: profileId);
+        },
       ),
     ],
   );

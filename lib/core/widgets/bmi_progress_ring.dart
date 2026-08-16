@@ -5,11 +5,13 @@ import 'package:assignment/core/theme/app_colors.dart';
 class BmiProgressRing extends StatelessWidget {
   final double bmi;
   final double size;
+  final double? ringFraction;
 
   const BmiProgressRing({
     super.key,
     required this.bmi,
     this.size = 200,
+    this.ringFraction,
   });
 
   @override
@@ -17,7 +19,7 @@ class BmiProgressRing extends StatelessWidget {
     // Normal BMI scale maps from 15.0 (start) to 35.0 (end)
     const double minBmi = 15.0;
     const double maxBmi = 35.0;
-    final double fraction = ((bmi - minBmi) / (maxBmi - minBmi)).clamp(0.0, 1.0);
+    final double fraction = ringFraction ?? ((bmi - minBmi) / (maxBmi - minBmi)).clamp(0.0, 1.0);
 
     return SizedBox(
       width: size,
@@ -93,8 +95,18 @@ class _BmiRingPainter extends CustomPainter {
 
     // Active track paint (if fraction > 0)
     if (fraction > 0) {
+      final rect = Rect.fromCircle(center: center, radius: radius);
       final paintActive = Paint()
-        ..color = activeColor
+        ..shader = const SweepGradient(
+          center: Alignment.center,
+          startAngle: startAngle,
+          endAngle: startAngle + sweepAngle,
+          colors: [
+            Color(0xFF0F6E5C), // dark teal
+            Color(0xFF14A085), // lighter teal
+          ],
+          tileMode: TileMode.clamp,
+        ).createShader(rect)
         ..style = PaintingStyle.stroke
         ..strokeWidth = strokeWidth
         ..strokeCap = StrokeCap.round;

@@ -5,13 +5,23 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:assignment/firebase_options.dart';
 import 'package:assignment/app_router.dart';
 import 'package:assignment/core/theme/app_theme.dart';
+import 'package:assignment/features/profile/models/user_profile.dart';
+import 'package:assignment/features/history/models/weight_entry.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   await Hive.initFlutter();
-  await Hive.openBox('profiles');
+  
+  // Register generated Hive adapters
+  Hive.registerAdapter(UserProfileAdapter());
+  Hive.registerAdapter(WeightEntryAdapter());
+
+  // Open Hive boxes
+  await Hive.openBox<UserProfile>('profiles');
+  await Hive.openBox<WeightEntry>('weight_entries');
   await Hive.openBox('settings');
+
   runApp(const ProviderScope(child: MyApp()));
 }
 

@@ -20,12 +20,14 @@ class MainShell extends ConsumerWidget {
       SettingsScreen(),
     ];
 
-    return Scaffold(
-      body: IndexedStack(
-        index: activeIndex,
-        children: screens,
+    return SafeArea(
+      child: Scaffold(
+        body: IndexedStack(
+          index: activeIndex,
+          children: screens,
+        ),
+        bottomNavigationBar: const CustomBottomNavBar(),
       ),
-      bottomNavigationBar: const CustomBottomNavBar(),
     );
   }
 }

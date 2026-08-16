@@ -268,7 +268,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
-                            Text('Sign In'),
+                            Text('Login'),
                             SizedBox(width: 8),
                             Icon(Icons.arrow_forward, size: 18),
                           ],
@@ -309,10 +309,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  icon: Image.network(
-                    'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
-                    height: 20,
-                  ),
+                  // icon: Image.network(
+                  //   'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
+                  //   height: 20,
+                  // ),
                   label: const Text(
                     'Continue with Google',
                     style: TextStyle(

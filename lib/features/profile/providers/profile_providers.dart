@@ -1,140 +1,196 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:assignment/features/profile/models/profile.dart';
+import 'package:assignment/features/profile/models/user_profile.dart';
+import 'package:assignment/features/history/models/weight_entry.dart';
 
-// Provider for all profiles list
-final allProfilesProvider = NotifierProvider<AllProfilesNotifier, List<Profile>>(() {
-  return AllProfilesNotifier();
+// Provider to manage active profile ID, saved in settings box
+final activeProfileIdProvider = StateProvider<String?>((ref) {
+  final settingsBox = Hive.box('settings');
+  final activeId = settingsBox.get('active_profile_id') as String?;
+  return activeId;
 });
 
-class AllProfilesNotifier extends Notifier<List<Profile>> {
-  late Box _box;
+// Helper function to set the active profile ID and save it in Hive settings box
+void setActiveProfileId(WidgetRef ref, String? id) {
+  ref.read(activeProfileIdProvider.notifier).state = id;
+  final settingsBox = Hive.box('settings');
+  settingsBox.put('active_profile_id', id);
+}
+
+// Notifier for all user profiles, listens live to Hive box changes
+class AllProfilesNotifier extends Notifier<List<UserProfile>> {
+  late Box<UserProfile> _box;
+  VoidCallback? _listener;
 
   @override
-  List<Profile> build() {
-    _box = Hive.box('profiles');
-    final stored = _box.values;
-    
-    if (stored.isEmpty) {
-      return [];
+  List<UserProfile> build() {
+    _box = Hive.box<UserProfile>('profiles');
+
+    if (_listener != null) {
+      _box.listenable().removeListener(_listener!);
     }
 
-    return stored.map((e) => Profile.fromMap(Map<dynamic, dynamic>.from(e))).toList();
+    _listener = () {
+      state = _box.values.toList();
+    };
+
+    _box.listenable().addListener(_listener!);
+
+    ref.onDispose(() {
+      if (_listener != null) {
+        _box.listenable().removeListener(_listener!);
+      }
+    });
+
+    return _box.values.toList();
   }
 
-  Future<Profile> addProfile(String name, double weight, double height, {bool isPrimary = false}) async {
+  Future<UserProfile> addProfile(String name, double weight, double height) async {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
-    final newProfile = Profile(
+    final newProfile = UserProfile(
       id: id,
       name: name,
       weightKg: weight,
       heightCm: height,
-      isPrimary: isPrimary,
     );
+    await _box.put(id, newProfile);
+    
+    // Create initial weight entry in weight_entries box
+    final weightBox = Hive.box<WeightEntry>('weight_entries');
+    final entryId = DateTime.now().microsecondsSinceEpoch.toString();
+    final initialEntry = WeightEntry(
+      id: entryId,
+      profileId: id,
+      weightKg: weight,
+      date: DateTime.now(),
+    );
+    await weightBox.put(entryId, initialEntry);
 
-    if (isPrimary) {
-      // Clear other primary flags
-      state = state.map((p) {
-        if (p.isPrimary) {
-          final updated = p.copyWith(isPrimary: false);
-          _box.put(updated.id, updated.toMap());
-          return updated;
-        }
-        return p;
-      }).toList();
-    }
-
-    _box.put(newProfile.id, newProfile.toMap());
-    state = [...state, newProfile];
     return newProfile;
   }
 
-  Future<void> updateProfile(String id, {String? name, double? weight, double? height, bool? isPrimary}) async {
-    state = state.map((p) {
-      if (p.id == id) {
-        final updated = p.copyWith(
-          name: name,
-          weightKg: weight,
-          heightCm: height,
-          isPrimary: isPrimary,
-        );
-        _box.put(updated.id, updated.toMap());
-        return updated;
-      }
-      
-      // If we are setting a new primary, disable it for others
-      if (isPrimary == true && p.isPrimary) {
-        final updated = p.copyWith(isPrimary: false);
-        _box.put(updated.id, updated.toMap());
-        return updated;
-      }
-      return p;
-    }).toList();
+  Future<void> updateProfile(UserProfile profile) async {
+    await _box.put(profile.id, profile);
   }
 
   Future<void> deleteProfile(String id) async {
-    final profileToDelete = state.firstWhere((p) => p.id == id);
-    _box.delete(id);
-    state = state.where((p) => p.id != id).toList();
-
-    // If we deleted the primary, make the first remaining profile primary
-    if (profileToDelete.isPrimary && state.isNotEmpty) {
-      final first = state.first;
-      await updateProfile(first.id, isPrimary: true);
+    await _box.delete(id);
+    
+    // Also clean up all weight entries associated with this profile
+    final weightBox = Hive.box<WeightEntry>('weight_entries');
+    final entriesToDelete = weightBox.values.where((e) => e.profileId == id).map((e) => e.id).toList();
+    if (entriesToDelete.isNotEmpty) {
+      await weightBox.deleteAll(entriesToDelete);
     }
-  }
 
-  Future<void> setPrimary(String id) async {
-    state = state.map((p) {
-      final updated = p.copyWith(isPrimary: p.id == id);
-      _box.put(updated.id, updated.toMap());
-      return updated;
-    }).toList();
+    // Reset active ID if we deleted the currently active profile
+    final activeId = ref.read(activeProfileIdProvider);
+    if (activeId == id) {
+      final settingsBox = Hive.box('settings');
+      settingsBox.delete('active_profile_id');
+      ref.read(activeProfileIdProvider.notifier).state = null;
+    }
   }
 }
 
-// Provider for currently active profile
-final activeProfileProvider = NotifierProvider<ActiveProfileNotifier, Profile?>(() {
-  return ActiveProfileNotifier();
+final allProfilesProvider = NotifierProvider<AllProfilesNotifier, List<UserProfile>>(() {
+  return AllProfilesNotifier();
 });
 
-class ActiveProfileNotifier extends Notifier<Profile?> {
-  late Box _settingsBox;
+// Derived active profile object provider
+final activeProfileProvider = Provider<UserProfile?>((ref) {
+  final profiles = ref.watch(allProfilesProvider);
+  final activeId = ref.watch(activeProfileIdProvider);
 
-  @override
-  Profile? build() {
-    final profiles = ref.watch(allProfilesProvider);
-    if (profiles.isEmpty) return null;
-
-    _settingsBox = Hive.box('settings');
-    final activeId = _settingsBox.get('active_profile_id') as String?;
-
-    if (activeId != null) {
-      final match = profiles.where((p) => p.id == activeId);
-      if (match.isNotEmpty) {
-        return match.first;
-      }
-    }
-
-    // Default to primary, or first if no primary is set
-    final primary = profiles.firstWhere((p) => p.isPrimary, orElse: () => profiles.first);
-    return primary;
+  if (activeId == null) {
+    return profiles.isNotEmpty ? profiles.first : null;
+  }
+  
+  final matches = profiles.where((p) => p.id == activeId);
+  if (matches.isNotEmpty) {
+    return matches.first;
   }
 
-  void setActiveProfile(String id) {
-    _settingsBox.put('active_profile_id', id);
-    
-    // Find in current state and set
-    final profiles = ref.read(allProfilesProvider);
-    final match = profiles.where((p) => p.id == id);
-    if (match.isNotEmpty) {
-      state = match.first;
+  return profiles.isNotEmpty ? profiles.first : null;
+});
+
+// Derived active BMI calculation provider
+final currentBmiProvider = Provider<double?>((ref) {
+  final activeProfile = ref.watch(activeProfileProvider);
+  if (activeProfile == null) return null;
+  return activeProfile.bmi;
+});
+
+// Notifier for weight history, listens live to Hive box changes
+class WeightEntriesNotifier extends Notifier<List<WeightEntry>> {
+  late Box<WeightEntry> _box;
+  VoidCallback? _listener;
+
+  @override
+  List<WeightEntry> build() {
+    _box = Hive.box<WeightEntry>('weight_entries');
+
+    if (_listener != null) {
+      _box.listenable().removeListener(_listener!);
+    }
+
+    _listener = () {
+      state = _box.values.toList();
+    };
+
+    _box.listenable().addListener(_listener!);
+
+    ref.onDispose(() {
+      if (_listener != null) {
+        _box.listenable().removeListener(_listener!);
+      }
+    });
+
+    return _box.values.toList();
+  }
+
+  Future<void> addEntry(String profileId, double weightKg, {DateTime? customDate}) async {
+    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final entry = WeightEntry(
+      id: id,
+      profileId: profileId,
+      weightKg: weightKg,
+      date: customDate ?? DateTime.now(),
+    );
+    await _box.put(id, entry);
+
+    // Sync weight to UserProfile current weight state directly in Hive
+    final profilesBox = Hive.box<UserProfile>('profiles');
+    final currentProfile = profilesBox.get(profileId);
+    if (currentProfile != null) {
+      final updated = currentProfile.copyWith(weightKg: weightKg);
+      await profilesBox.put(profileId, updated);
+    }
+  }
+
+  Future<void> deleteEntry(String id) async {
+    final entry = _box.get(id);
+    if (entry == null) return;
+    final profileId = entry.profileId;
+    await _box.delete(id);
+
+    // Re-sync user profile current weight to the new most recent weight log directly in Hive
+    final remaining = _box.values.where((e) => e.profileId == profileId).toList();
+    if (remaining.isNotEmpty) {
+      remaining.sort((a, b) => b.date.compareTo(a.date)); // date descending
+      final mostRecent = remaining.first;
+
+      final profilesBox = Hive.box<UserProfile>('profiles');
+      final currentProfile = profilesBox.get(profileId);
+      if (currentProfile != null) {
+        final updated = currentProfile.copyWith(weightKg: mostRecent.weightKg);
+        await profilesBox.put(profileId, updated);
+      }
     }
   }
 }
 
-// Current BMI provider
-final currentBmiProvider = Provider<double>((ref) {
-  final activeProfile = ref.watch(activeProfileProvider);
-  return activeProfile?.bmi ?? 0.0;
+final weightEntriesProvider = NotifierProvider<WeightEntriesNotifier, List<WeightEntry>>(() {
+  return WeightEntriesNotifier();
 });

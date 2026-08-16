@@ -19,10 +19,34 @@ class AppColors {
 
   // Indicator & Status colors
   static const Color success = Color(0xFF0F6E5C); // Teal green success
-  static const Color warning = Color(0xFFE53935); // Red warning/overweight
+  static const Color warning = Color(0xFFE53935); // Red warning/error
+  static const Color warningAmber = Color(0xFFD97706); // Warm amber for underweight/overweight
+  static const Color obeseRed = Color(0xFFE53935); // Pure red for obese
+
+  static Color getBmiColor(double bmi) {
+    if (bmi < 18.5) return warningAmber;
+    if (bmi < 25.0) return success;
+    if (bmi < 30.0) return warningAmber;
+    return obeseRed;
+  }
+
+  static Color getBmiCategoryColor(String category) {
+    final cat = category.toLowerCase();
+    if (cat.contains('underweight') || cat.contains('overweight')) {
+      return warningAmber;
+    }
+    if (cat.contains('normal')) {
+      return success;
+    }
+    if (cat.contains('obese')) {
+      return obeseRed;
+    }
+    return success;
+  }
 
   // Bottom Navigation
   static const Color navActive = Color(0xFF0F6E5C);
   static const Color navInactive = Color(0xFF9CA3AF);
   static const Color borderLight = Color(0xFFE5E7EB);
 }
+
