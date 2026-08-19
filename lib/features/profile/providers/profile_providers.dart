@@ -46,13 +46,25 @@ class AllProfilesNotifier extends Notifier<List<UserProfile>> {
     return _box.values.toList();
   }
 
-  Future<UserProfile> addProfile(String name, double weight, double height) async {
+  Future<UserProfile> addProfile(
+    String name,
+    double weight,
+    double height, {
+    String? gender,
+    String? weightUnit,
+    String? heightUnit,
+    String? photoBase64,
+  }) async {
     final id = DateTime.now().microsecondsSinceEpoch.toString();
     final newProfile = UserProfile(
       id: id,
       name: name,
       weightKg: weight,
       heightCm: height,
+      gender: gender,
+      weightUnit: weightUnit,
+      heightUnit: heightUnit,
+      photoBase64: photoBase64,
     );
     await _box.put(id, newProfile);
     

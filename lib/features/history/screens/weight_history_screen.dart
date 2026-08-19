@@ -28,13 +28,17 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
 
   void _showLogWeightBottomSheet(BuildContext context, UserProfile profile, String weightUnit) {
     // show pre-filled value in display unit
-    final displayWeight = weightUnit == 'lbs'
+    double displayWeight = weightUnit == 'lbs'
         ? profile.weightKg / 0.453592
         : profile.weightKg;
-    final weightController = TextEditingController(text: displayWeight.toStringAsFixed(1));
+    displayWeight = weightUnit == 'lbs'
+        ? displayWeight.roundToDouble().clamp(70.0, 450.0)
+        : ((displayWeight * 2).round() / 2.0).clamp(30.0, 200.0);
+
     final formKey = GlobalKey<FormState>();
     _selectedDate = DateTime.now();
     String selectedUnit = weightUnit;
+    double selectedWeightValue = displayWeight;
 
     showModalBottomSheet(
       context: context,
@@ -52,7 +56,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
               ),
               decoration: BoxDecoration(
                 color: AppColors.cardBg,
-                borderRadius: BorderRadius.only(
+                borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(28),
                   topRight: Radius.circular(28),
                 ),
@@ -87,18 +91,29 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: TextFormField(
-                            controller: weightController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          child: DropdownButtonFormField<double>(
+                            value: selectedWeightValue,
                             decoration: const InputDecoration(
                               labelText: 'Weight',
                               prefixIcon: Icon(Icons.monitor_weight_outlined),
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return 'Enter weight';
-                              final val = double.tryParse(value);
-                              if (val == null || val <= 0) return 'Enter a valid weight';
-                              return null;
+                            items: (selectedUnit == 'kg'
+                                    ? List.generate(341, (i) => 30.0 + i * 0.5)
+                                    : List.generate(381, (i) => 70.0 + i * 1.0))
+                                .map((val) {
+                              return DropdownMenuItem<double>(
+                                value: val,
+                                child: Text(selectedUnit == 'kg'
+                                    ? '${val.toStringAsFixed(1)} kg'
+                                    : '${val.toStringAsFixed(0)} lbs'),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setModalState(() {
+                                  selectedWeightValue = val;
+                                });
+                              }
                             },
                           ),
                         ),
@@ -116,13 +131,12 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                               final newUnit = index == 0 ? 'kg' : 'lbs';
                               if (newUnit == selectedUnit) return;
                               setModalState(() {
-                                final currentVal = double.tryParse(weightController.text);
-                                if (currentVal != null) {
-                                  if (newUnit == 'kg' && selectedUnit == 'lbs') {
-                                    weightController.text = (currentVal * 0.453592).toStringAsFixed(1);
-                                  } else if (newUnit == 'lbs' && selectedUnit == 'kg') {
-                                    weightController.text = (currentVal / 0.453592).toStringAsFixed(1);
-                                  }
+                                if (newUnit == 'kg' && selectedUnit == 'lbs') {
+                                  final inKg = selectedWeightValue * 0.453592;
+                                  selectedWeightValue = ((inKg * 2).round() / 2.0).clamp(30.0, 200.0);
+                                } else if (newUnit == 'lbs' && selectedUnit == 'kg') {
+                                  final inLbs = selectedWeightValue / 0.453592;
+                                  selectedWeightValue = inLbs.roundToDouble().clamp(70.0, 450.0);
                                 }
                                 selectedUnit = newUnit;
                               });
@@ -162,7 +176,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                         }
                       },
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         decoration: BoxDecoration(
                           color: AppColors.fillLight,
                           borderRadius: BorderRadius.circular(16),
@@ -173,7 +187,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                             Row(
                               children: [
                                 Icon(Icons.calendar_today_outlined, color: AppColors.textSecondary, size: 20),
-                                SizedBox(width: 12),
+                                const SizedBox(width: 12),
                                 Text('Entry Date', style: TextStyle(color: AppColors.textSecondary, fontSize: 15)),
                               ],
                             ),
@@ -193,7 +207,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         if (formKey.currentState!.validate()) {
-                          final displayW = double.parse(weightController.text);
+                          final displayW = selectedWeightValue;
                           // Convert to canonical kg before storing
                           final weight = selectedUnit == 'lbs' ? displayW * 0.453592 : displayW;
                           await ref.read(weightEntriesProvider.notifier).addEntry(
@@ -632,9 +646,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
   }) {
     // Convert to display units
     final displayWeight = weightUnit == 'lbs' ? entry.weightKg / 0.453592 : entry.weightKg;
-    final displayHeight = heightUnit == 'inches' ? heightCm / 2.54 : heightCm;
     final weightLabel = weightUnit == 'lbs' ? 'lbs' : 'kg';
-    final heightLabel = heightUnit == 'inches' ? 'in' : 'cm';
 
     final Widget deltaWidget;
     if (deltaKg != null && deltaKg.abs() > 0.001) {
@@ -740,7 +752,18 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                     ),
                     Flexible(
                       child: Text(
-                        '${displayHeight.toStringAsFixed(heightUnit == 'inches' ? 1 : 0)} $heightLabel',
+                        heightUnit == 'inches'
+                            ? (() {
+                                final inchesTotal = heightCm / 2.54;
+                                int feet = (inchesTotal / 12).floor();
+                                int inches = (inchesTotal % 12).round();
+                                if (inches == 12) {
+                                  feet += 1;
+                                  inches = 0;
+                                }
+                                return "$feet' $inches\"";
+                              })()
+                            : '${heightCm.toStringAsFixed(0)} cm',
                         style: TextStyle(
                           color: AppColors.textSecondary,
                           fontSize: 14,

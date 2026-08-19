@@ -189,88 +189,93 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final darkTheme = Theme.of(context).brightness == Brightness.dark;
     
     return Padding(
-      padding: EdgeInsets.all(24.0),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Graphic Card
-          Container(
-            height: 240,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: AppColors.cardBg,
-              borderRadius: BorderRadius.circular(32),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 20,
-                  offset: Offset(0, 10),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      child: Center(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 16),
+              // Graphic Card
+              Container(
+                height: 200,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.cardBg,
+                  borderRadius: BorderRadius.circular(32),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Decorative concentric circle backgrounds
-                Container(
-                  width: 170,
-                  height: 170,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: slide.iconBgColor.withOpacity(darkTheme ? 0.08 : 0.4),
-                  ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Decorative concentric circle backgrounds
+                    Container(
+                      width: 150,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: slide.iconBgColor.withOpacity(darkTheme ? 0.08 : 0.4),
+                      ),
+                    ),
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: slide.iconBgColor.withOpacity(darkTheme ? 0.15 : 0.8),
+                      ),
+                    ),
+                    // Center icon
+                    Icon(
+                      slide.icon,
+                      size: 48,
+                      color: slide.iconColor,
+                    ),
+                  ],
                 ),
-                Container(
-                  width: 110,
-                  height: 110,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: slide.iconBgColor.withOpacity(darkTheme ? 0.15 : 0.8),
-                  ),
+              ),
+              const SizedBox(height: 24),
+              // Titles & description
+              Text(
+                slide.subtitle.toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
                 ),
-                // Center icon
-                Icon(
-                  slide.icon,
-                  size: 52,
-                  color: slide.iconColor,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                slide.title,
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
-              ],
-            ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                slide.description,
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+            ],
           ),
-          const SizedBox(height: 40),
-
-          // Titles & description
-          Text(
-            slide.subtitle.toUpperCase(),
-            style: const TextStyle(
-              color: AppColors.primary,
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            slide.title,
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            slide.description,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 15,
-              height: 1.5,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AuthRepository {
   final FirebaseAuth _firebaseAuth;
@@ -7,7 +8,12 @@ class AuthRepository {
 
   AuthRepository({FirebaseAuth? firebaseAuth, GoogleSignIn? googleSignIn})
       : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
-        _googleSignIn = googleSignIn ?? GoogleSignIn();
+        _googleSignIn = googleSignIn ??
+            GoogleSignIn(
+              clientId: kIsWeb
+                  ? '23468039820-rs6oq06lo8ouk4m852be5oe0vcavr7g9.apps.googleusercontent.com'
+                  : null,
+            );
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
@@ -51,7 +57,7 @@ class AuthRepository {
     } on FirebaseAuthException catch (e) {
       throw _handleException(e);
     } catch (e) {
-      throw 'An error occurred during Google Sign-In.';
+      throw 'Google Sign-In failed: $e';
     }
   }
 
@@ -64,7 +70,11 @@ class AuthRepository {
   }
 
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    try {
+      await _googleSignIn.signOut();
+    } catch (_) {
+      // Ignore errors if the user wasn't signed in with Google
+    }
     await _firebaseAuth.signOut();
   }
 

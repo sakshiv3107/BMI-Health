@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,8 +17,6 @@ double _fromKg(double kg, _WeightUnit u) =>
     u == _WeightUnit.lbs ? kg / 0.453592 : kg;
 
 double _toCm(double v, _HeightUnit u) => u == _HeightUnit.inches ? v * 2.54 : v;
-double _fromCm(double cm, _HeightUnit u) =>
-    u == _HeightUnit.inches ? cm / 2.54 : cm;
 
 String _genderString(_Gender g) {
   switch (g) {
@@ -59,8 +56,6 @@ class UserDetailsFormScreen extends ConsumerStatefulWidget {
 class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
-  late TextEditingController _weightController;
-  late TextEditingController _heightController;
 
   bool _isLoading = false;
   bool _isEditMode = false;
@@ -69,6 +64,12 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
   _HeightUnit _heightUnit = _HeightUnit.cm;
   _Gender? _gender;
   bool _genderTouched = false;
+
+  // Selected value state for dropdowns
+  late double _selectedWeight;
+  late double _selectedHeight; // Height in CM when cm unit is active
+  late int _selectedFeet;
+  late int _selectedInches;
 
   // Profile photo (held as base64 so it works on web + mobile)
   String? _pickedPhotoBase64;
@@ -101,40 +102,47 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
 
     _nameController = TextEditingController(text: initialName);
 
-    // Show value in the user's chosen unit
-    _weightController = TextEditingController(
-      text: initialWeightKg > 0
-          ? _fmt(_fromKg(initialWeightKg, _weightUnit))
-          : '',
-    );
-    _heightController = TextEditingController(
-      text: initialHeightCm > 0
-          ? _fmt(_fromCm(initialHeightCm, _heightUnit))
-          : '',
-    );
+    // Initialize dropdown values
+    double weightVal = initialWeightKg > 0
+        ? _fromKg(initialWeightKg, _weightUnit)
+        : (_weightUnit == _WeightUnit.lbs ? 150.0 : 70.0);
+    _selectedWeight = _weightUnit == _WeightUnit.lbs
+        ? weightVal.roundToDouble().clamp(70.0, 450.0)
+        : ((weightVal * 2).round() / 2.0).clamp(30.0, 200.0);
+
+    double heightVal = initialHeightCm > 0
+        ? initialHeightCm
+        : 170.0;
+    _selectedHeight = heightVal.roundToDouble().clamp(100.0, 250.0);
+
+    final inchesTotal = heightVal / 2.54;
+    int ft = (inchesTotal / 12).floor();
+    int inc = (inchesTotal % 12).round();
+    if (inc == 12) {
+      ft += 1;
+      inc = 0;
+    }
+    _selectedFeet = ft.clamp(3, 8);
+    _selectedInches = inc.clamp(0, 11);
   }
 
   @override
   void dispose() {
     _nameController.dispose();
-    _weightController.dispose();
-    _heightController.dispose();
     super.dispose();
-  }
-
-  // Format double: strip trailing zeros
-  String _fmt(double v) {
-    if (v == v.truncateToDouble()) return v.toInt().toString();
-    return v.toStringAsFixed(2);
   }
 
   // Called when weight unit toggle changes
   void _onWeightUnitChanged(_WeightUnit newUnit) {
-    final raw = double.tryParse(_weightController.text);
     setState(() {
-      if (raw != null && raw > 0) {
-        final inKg = _toKg(raw, _weightUnit);
-        _weightController.text = _fmt(_fromKg(inKg, newUnit));
+      if (newUnit == _WeightUnit.kg) {
+        // lbs to kg
+        final inKg = _selectedWeight * 0.453592;
+        _selectedWeight = ((inKg * 2).round() / 2.0).clamp(30.0, 200.0);
+      } else {
+        // kg to lbs
+        final inLbs = _selectedWeight / 0.453592;
+        _selectedWeight = inLbs.roundToDouble().clamp(70.0, 450.0);
       }
       _weightUnit = newUnit;
     });
@@ -142,11 +150,23 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
 
   // Called when height unit toggle changes
   void _onHeightUnitChanged(_HeightUnit newUnit) {
-    final raw = double.tryParse(_heightController.text);
     setState(() {
-      if (raw != null && raw > 0) {
-        final inCm = _toCm(raw, _heightUnit);
-        _heightController.text = _fmt(_fromCm(inCm, newUnit));
+      if (newUnit == _HeightUnit.cm) {
+        // ft/in to cm
+        final inchesTotal = _selectedFeet * 12 + _selectedInches;
+        final inCm = inchesTotal * 2.54;
+        _selectedHeight = inCm.roundToDouble().clamp(100.0, 250.0);
+      } else {
+        // cm to ft/in
+        final inchesTotal = _selectedHeight / 2.54;
+        int ft = (inchesTotal / 12).floor();
+        int inc = (inchesTotal % 12).round();
+        if (inc == 12) {
+          ft += 1;
+          inc = 0;
+        }
+        _selectedFeet = ft.clamp(3, 8);
+        _selectedInches = inc.clamp(0, 11);
       }
       _heightUnit = newUnit;
     });
@@ -231,8 +251,10 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
     setState(() => _isLoading = true);
 
     final name = _nameController.text.trim();
-    final weightRaw = double.parse(_weightController.text);
-    final heightRaw = double.parse(_heightController.text);
+    final weightRaw = _selectedWeight;
+    final double heightRaw = _heightUnit == _HeightUnit.inches
+        ? (_selectedFeet * 12 + _selectedInches) * 1.0
+        : _selectedHeight;
 
     // Convert to canonical units (kg, cm)
     final weightKg = _toKg(weightRaw, _weightUnit);
@@ -279,16 +301,11 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
               name,
               weightKg,
               heightCm,
+              gender: _genderString(_gender!),
+              weightUnit: _weightUnit == _WeightUnit.lbs ? 'lbs' : 'kg',
+              heightUnit: _heightUnit == _HeightUnit.inches ? 'inches' : 'cm',
+              photoBase64: _pickedPhotoBase64,
             );
-
-        // Patch gender, units, and photo onto new profile
-        final withExtras = newProfile.copyWith(
-          gender: _genderString(_gender!),
-          weightUnit: _weightUnit == _WeightUnit.lbs ? 'lbs' : 'kg',
-          heightUnit: _heightUnit == _HeightUnit.inches ? 'inches' : 'cm',
-          photoBase64: _pickedPhotoBase64,
-        );
-        await ref.read(allProfilesProvider.notifier).updateProfile(withExtras);
 
         setActiveProfileId(ref, newProfile.id);
 
@@ -475,20 +492,6 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
   // ─── Build ───────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final weightHint =
-        _weightUnit == _WeightUnit.kg ? 'e.g. 70.5' : 'e.g. 155.5';
-    final heightHint =
-        _heightUnit == _HeightUnit.cm ? 'e.g. 175' : 'e.g. 68.9';
-    final weightLabel =
-        _weightUnit == _WeightUnit.kg ? 'Weight (kg)' : 'Weight (lbs)';
-    final heightLabel =
-        _heightUnit == _HeightUnit.cm ? 'Height (cm)' : 'Height (inches)';
-
-    // Sensible numeric ranges (in display unit)
-    final weightMin = _weightUnit == _WeightUnit.kg ? 10.0 : 22.0;
-    final weightMax = _weightUnit == _WeightUnit.kg ? 500.0 : 1100.0;
-    final heightMin = _heightUnit == _HeightUnit.cm ? 50.0 : 19.7;
-    final heightMax = _heightUnit == _HeightUnit.cm ? 300.0 : 118.1;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -710,30 +713,29 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _weightController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                          ],
+                        DropdownButtonFormField<double>(
+                          value: _selectedWeight,
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.monitor_weight_outlined),
-                            hintText: weightHint,
-                            suffixText: _weightUnit == _WeightUnit.kg ? 'kg' : 'lbs',
-                            labelText: weightLabel,
+                            labelText: _weightUnit == _WeightUnit.kg ? 'Weight (kg)' : 'Weight (lbs)',
                           ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return 'Please enter your weight';
+                          items: (_weightUnit == _WeightUnit.kg
+                                  ? List.generate(341, (i) => 30.0 + i * 0.5)
+                                  : List.generate(381, (i) => 70.0 + i * 1.0))
+                              .map((val) {
+                            return DropdownMenuItem<double>(
+                              value: val,
+                              child: Text(_weightUnit == _WeightUnit.kg
+                                  ? '${val.toStringAsFixed(1)} kg'
+                                  : '${val.toStringAsFixed(0)} lbs'),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedWeight = val;
+                              });
                             }
-                            final val = double.tryParse(v);
-                            if (val == null) {
-                              return 'Enter a valid number';
-                            }
-                            if (val < weightMin || val > weightMax) {
-                              return 'Weight must be between ${weightMin.toStringAsFixed(0)} and ${weightMax.toStringAsFixed(0)} ${_weightUnit == _WeightUnit.kg ? "kg" : "lbs"}';
-                            }
-                            return null;
                           },
                         ),
                         const SizedBox(height: 24),
@@ -747,38 +749,82 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                               leftValue: _HeightUnit.cm,
                               rightValue: _HeightUnit.inches,
                               leftLabel: 'CM',
-                              rightLabel: 'IN',
+                              rightLabel: 'FT/IN',
                               onChanged: _onHeightUnitChanged,
                             ),
                           ],
                         ),
                         const SizedBox(height: 6),
-                        TextFormField(
-                          controller: _heightController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                          ],
-                          decoration: InputDecoration(
-                            prefixIcon: const Icon(Icons.height),
-                            hintText: heightHint,
-                            suffixText: _heightUnit == _HeightUnit.cm ? 'cm' : 'in',
-                            labelText: heightLabel,
+                        if (_heightUnit == _HeightUnit.cm)
+                          DropdownButtonFormField<double>(
+                            value: _selectedHeight,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.height),
+                              labelText: 'Height (cm)',
+                            ),
+                            items: List.generate(151, (i) => 100.0 + i * 1.0).map((val) {
+                              return DropdownMenuItem<double>(
+                                value: val,
+                                child: Text('${val.toStringAsFixed(0)} cm'),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                setState(() {
+                                  _selectedHeight = val;
+                                });
+                              }
+                            },
+                          )
+                        else
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<int>(
+                                  value: _selectedFeet,
+                                  decoration: const InputDecoration(
+                                    prefixIcon: Icon(Icons.height),
+                                    labelText: 'Feet',
+                                  ),
+                                  items: List.generate(6, (i) => 3 + i).map((val) {
+                                    return DropdownMenuItem<int>(
+                                      value: val,
+                                      child: Text('$val ft'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() {
+                                        _selectedFeet = val;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButtonFormField<int>(
+                                  value: _selectedInches,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Inches',
+                                  ),
+                                  items: List.generate(12, (i) => i).map((val) {
+                                    return DropdownMenuItem<int>(
+                                      value: val,
+                                      child: Text('$val in'),
+                                    );
+                                  }).toList(),
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() {
+                                        _selectedInches = val;
+                                      });
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                          validator: (v) {
-                            if (v == null || v.isEmpty) {
-                              return 'Please enter your height';
-                            }
-                            final val = double.tryParse(v);
-                            if (val == null) {
-                              return 'Enter a valid number';
-                            }
-                            if (val < heightMin || val > heightMax) {
-                              return 'Height must be between ${heightMin.toStringAsFixed(1)} and ${heightMax.toStringAsFixed(1)} ${_heightUnit == _HeightUnit.cm ? "cm" : "in"}';
-                            }
-                            return null;
-                          },
-                        ),
                       ],
                     ),
                   ),

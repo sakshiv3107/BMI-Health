@@ -68,19 +68,26 @@ class BmiDashboardScreen extends ConsumerWidget {
 
   void _showUpdateDataBottomSheet(BuildContext context, WidgetRef ref, UserProfile profile, String weightUnit, String heightUnit) {
     // Convert stored kg/cm to display unit
-    final displayWeight = weightUnit == 'lbs'
+    double selectedWeight = weightUnit == 'lbs'
         ? profile.weightKg / 0.453592
         : profile.weightKg;
-    final displayHeight = heightUnit == 'inches'
-        ? profile.heightCm / 2.54
-        : profile.heightCm;
+    selectedWeight = weightUnit == 'lbs'
+        ? selectedWeight.roundToDouble().clamp(70.0, 450.0)
+        : ((selectedWeight * 2).round() / 2.0).clamp(30.0, 200.0);
 
-    final weightController = TextEditingController(
-      text: displayWeight.toStringAsFixed(1),
-    );
-    final heightController = TextEditingController(
-      text: displayHeight.toStringAsFixed(1),
-    );
+    double selectedHeight = profile.heightCm;
+    selectedHeight = selectedHeight.roundToDouble().clamp(100.0, 250.0);
+
+    final double totalInches = profile.heightCm / 2.54;
+    int selectedFeet = (totalInches / 12).floor();
+    int selectedInches = (totalInches % 12).round();
+    if (selectedInches == 12) {
+      selectedFeet += 1;
+      selectedInches = 0;
+    }
+    selectedFeet = selectedFeet.clamp(3, 8);
+    selectedInches = selectedInches.clamp(0, 11);
+
     final formKey = GlobalKey<FormState>();
 
     showModalBottomSheet(
@@ -88,128 +95,201 @@ class BmiDashboardScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) {
-        return Container(
-          padding: EdgeInsets.only(
-            top: 24,
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          decoration:  BoxDecoration(
-            color: AppColors.cardBg,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(28),
-              topRight: Radius.circular(28),
-            ),
-          ),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                top: 24,
+                left: 24,
+                right: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.cardBg,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(28),
+                  topRight: Radius.circular(28),
+                ),
+              ),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                SizedBox(height: 24),
-                 Text(
-                  'Update Body Data',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Updating data for ${profile.name}',
-                  style:  TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                TextFormField(
-                  controller: weightController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Weight (${weightUnit == 'lbs' ? 'lbs' : 'kg'})',
-                    prefixIcon: const Icon(Icons.monitor_weight_outlined),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Enter weight';
-                    final val = double.tryParse(value);
-                    if (val == null || val <= 0) return 'Enter a valid weight';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: heightController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Height (${heightUnit == 'inches' ? 'in' : 'cm'})',
-                    prefixIcon: const Icon(Icons.height),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) return 'Enter height';
-                    final val = double.tryParse(value);
-                    if (val == null || val <= 0) return 'Enter a valid height';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () async {
-                    if (formKey.currentState!.validate()) {
-                      final displayW = double.parse(weightController.text);
-                      final displayH = double.parse(heightController.text);
-                      // Convert back to canonical kg / cm
-                      final newWeight = weightUnit == 'lbs' ? displayW * 0.453592 : displayW;
-                      final newHeight = heightUnit == 'inches' ? displayH * 2.54 : displayH;
-                      final weightChanged = (profile.weightKg - newWeight).abs() > 0.01;
-                      final heightChanged = (profile.heightCm - newHeight).abs() > 0.01;
-
-                      final updatedProfile = profile.copyWith(
-                        weightKg: newWeight,
-                        heightCm: newHeight,
-                      );
-
-                      // Read notifiers synchronously BEFORE async gaps to prevent disposed WidgetRef errors
-                      final profilesNotifier = ref.read(allProfilesProvider.notifier);
-                      final weightEntriesNotifier = ref.read(weightEntriesProvider.notifier);
-
-                      await profilesNotifier.updateProfile(updatedProfile);
-
-                      if (weightChanged || heightChanged) {
-                        await weightEntriesNotifier.addEntry(profile.id, newWeight);
-                      }
-
-                      if (context.mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Body metrics updated successfully!'),
-                            backgroundColor: AppColors.primary,
-                          ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Update Body Data',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Updating data for ${profile.name}',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    DropdownButtonFormField<double>(
+                      value: selectedWeight,
+                      decoration: InputDecoration(
+                        labelText: 'Weight (${weightUnit == 'lbs' ? 'lbs' : 'kg'})',
+                        prefixIcon: const Icon(Icons.monitor_weight_outlined),
+                      ),
+                      items: (weightUnit == 'kg'
+                              ? List.generate(341, (i) => 30.0 + i * 0.5)
+                              : List.generate(381, (i) => 70.0 + i * 1.0))
+                          .map((val) {
+                        return DropdownMenuItem<double>(
+                          value: val,
+                          child: Text(weightUnit == 'kg'
+                              ? '${val.toStringAsFixed(1)} kg'
+                              : '${val.toStringAsFixed(0)} lbs'),
                         );
-                      }
-                    }
-                  },
-                  child: const Text('Save Changes'),
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setModalState(() {
+                            selectedWeight = val;
+                          });
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    if (heightUnit != 'inches')
+                      DropdownButtonFormField<double>(
+                        value: selectedHeight,
+                        decoration: const InputDecoration(
+                          labelText: 'Height (cm)',
+                          prefixIcon: Icon(Icons.height),
+                        ),
+                        items: List.generate(151, (i) => 100.0 + i * 1.0).map((val) {
+                          return DropdownMenuItem<double>(
+                            value: val,
+                            child: Text('${val.toStringAsFixed(0)} cm'),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setModalState(() {
+                              selectedHeight = val;
+                            });
+                          }
+                        },
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              value: selectedFeet,
+                              decoration: const InputDecoration(
+                                labelText: 'Feet',
+                                prefixIcon: Icon(Icons.height),
+                              ),
+                              items: List.generate(6, (i) => 3 + i).map((val) {
+                                return DropdownMenuItem<int>(
+                                  value: val,
+                                  child: Text('$val ft'),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() {
+                                    selectedFeet = val;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: DropdownButtonFormField<int>(
+                              value: selectedInches,
+                              decoration: const InputDecoration(
+                                labelText: 'Inches',
+                              ),
+                              items: List.generate(12, (i) => i).map((val) {
+                                return DropdownMenuItem<int>(
+                                  value: val,
+                                  child: Text('$val in'),
+                                );
+                              }).toList(),
+                              onChanged: (val) {
+                                if (val != null) {
+                                  setModalState(() {
+                                    selectedInches = val;
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () async {
+                        if (formKey.currentState!.validate()) {
+                          final displayW = selectedWeight;
+                          final displayH = heightUnit == 'inches'
+                              ? (selectedFeet * 12 + selectedInches) * 1.0
+                              : selectedHeight;
+                          // Convert back to canonical kg / cm
+                          final newWeight = weightUnit == 'lbs' ? displayW * 0.453592 : displayW;
+                          final newHeight = heightUnit == 'inches' ? displayH * 2.54 : displayH;
+                          final weightChanged = (profile.weightKg - newWeight).abs() > 0.01;
+                          final heightChanged = (profile.heightCm - newHeight).abs() > 0.01;
+
+                          final updatedProfile = profile.copyWith(
+                            weightKg: newWeight,
+                            heightCm: newHeight,
+                          );
+
+                          // Read notifiers synchronously BEFORE async gaps to prevent disposed WidgetRef errors
+                          final profilesNotifier = ref.read(allProfilesProvider.notifier);
+                          final weightEntriesNotifier = ref.read(weightEntriesProvider.notifier);
+
+                          await profilesNotifier.updateProfile(updatedProfile);
+
+                          if (weightChanged || heightChanged) {
+                            await weightEntriesNotifier.addEntry(profile.id, newWeight);
+                          }
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Body metrics updated successfully!'),
+                                backgroundColor: AppColors.primary,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: const Text('Save Changes'),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
@@ -468,6 +548,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
               // Height and Weight Cards
               Row(
                 children: [
@@ -479,7 +560,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
+                            color: Colors.black.withValues(alpha: 0.02),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -547,7 +628,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.02),
+                            color: Colors.black.withValues(alpha: 0.02),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -581,7 +662,16 @@ class BmiDashboardScreen extends ConsumerWidget {
                               Flexible(
                                 child: Text(
                                   heightUnit == 'inches'
-                                      ? (activeProfile.heightCm / 2.54).toStringAsFixed(1)
+                                      ? (() {
+                                          final inchesTotal = activeProfile.heightCm / 2.54;
+                                          int feet = (inchesTotal / 12).floor();
+                                          int inches = (inchesTotal % 12).round();
+                                          if (inches == 12) {
+                                            feet += 1;
+                                            inches = 0;
+                                          }
+                                          return "$feet' $inches\"";
+                                        })()
                                       : activeProfile.heightCm.toStringAsFixed(0),
                                   style: TextStyle(
                                     color: AppColors.textPrimary,
@@ -593,7 +683,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                heightUnit == 'inches' ? 'in' : 'cm',
+                                heightUnit == 'inches' ? '' : 'cm',
                                 style: TextStyle(
                                   color: AppColors.textSecondary,
                                   fontSize: 13,

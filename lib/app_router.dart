@@ -21,6 +21,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       if (authState.isLoading) return null;
 
       final isAuth = authState.valueOrNull != null;
+      if (isAuth) {
+        Hive.box('settings').put('has_seen_onboarding', true);
+      }
       final hasSeenOnboarding = Hive.box('settings').get('has_seen_onboarding', defaultValue: false) as bool;
 
       final isLoggingIn = state.matchedLocation == '/login' ||
