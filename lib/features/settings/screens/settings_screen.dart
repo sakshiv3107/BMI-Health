@@ -11,15 +11,21 @@ import 'package:assignment/core/theme/theme_provider.dart';
 
 // ─── Preferences providers (persisted in Hive 'settings' box) ────────────────
 final notificationsEnabledProvider = StateProvider<bool>((ref) {
-  return Hive.box('settings').get('notifications_enabled', defaultValue: true) as bool;
+  final authState = ref.watch(authStateProvider);
+  final userId = authState.valueOrNull?.uid ?? 'guest';
+  return Hive.box('settings').get('${userId}_notifications_enabled', defaultValue: true) as bool;
 });
 
 final globalWeightUnitProvider = StateProvider<String>((ref) {
-  return Hive.box('settings').get('global_weight_unit', defaultValue: 'kg') as String;
+  final authState = ref.watch(authStateProvider);
+  final userId = authState.valueOrNull?.uid ?? 'guest';
+  return Hive.box('settings').get('${userId}_global_weight_unit', defaultValue: 'kg') as String;
 });
 
 final globalHeightUnitProvider = StateProvider<String>((ref) {
-  return Hive.box('settings').get('global_height_unit', defaultValue: 'cm') as String;
+  final authState = ref.watch(authStateProvider);
+  final userId = authState.valueOrNull?.uid ?? 'guest';
+  return Hive.box('settings').get('${userId}_global_height_unit', defaultValue: 'cm') as String;
 });
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -114,8 +120,9 @@ class SettingsScreen extends ConsumerWidget {
                   label: 'Notifications',
                   value: notificationsEnabled,
                   onChanged: (v) {
+                    final userId = ref.read(authStateProvider).valueOrNull?.uid ?? 'guest';
                     ref.read(notificationsEnabledProvider.notifier).state = v;
-                    Hive.box('settings').put('notifications_enabled', v);
+                    Hive.box('settings').put('${userId}_notifications_enabled', v);
                   },
                 ),
                 _divider(),
@@ -127,8 +134,9 @@ class SettingsScreen extends ConsumerWidget {
                   options: const ['KG', 'LBS'],
                   selected: weightUnit.toUpperCase(),
                   onSelect: (v) {
+                    final userId = ref.read(authStateProvider).valueOrNull?.uid ?? 'guest';
                     ref.read(globalWeightUnitProvider.notifier).state = v.toLowerCase();
-                    Hive.box('settings').put('global_weight_unit', v.toLowerCase());
+                    Hive.box('settings').put('${userId}_global_weight_unit', v.toLowerCase());
                   },
                 ),
                 _divider(),
@@ -140,9 +148,10 @@ class SettingsScreen extends ConsumerWidget {
                   options: const ['CM', 'FT/IN'],
                   selected: heightUnit.toUpperCase() == 'CM' ? 'CM' : 'FT/IN',
                   onSelect: (v) {
+                    final userId = ref.read(authStateProvider).valueOrNull?.uid ?? 'guest';
                     final stored = v == 'FT/IN' ? 'inches' : 'cm';
                     ref.read(globalHeightUnitProvider.notifier).state = stored;
-                    Hive.box('settings').put('global_height_unit', stored);
+                    Hive.box('settings').put('${userId}_global_height_unit', stored);
                   },
                 ),
                 _divider(),

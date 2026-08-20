@@ -3,19 +3,24 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:assignment/features/profile/models/user_profile.dart';
 import 'package:assignment/features/history/models/weight_entry.dart';
+import 'package:assignment/features/auth/auth_provider.dart';
 
 // Provider to manage active profile ID, saved in settings box
 final activeProfileIdProvider = StateProvider<String?>((ref) {
+  final authState = ref.watch(authStateProvider);
+  final userId = authState.valueOrNull?.uid ?? 'guest';
   final settingsBox = Hive.box('settings');
-  final activeId = settingsBox.get('active_profile_id') as String?;
+  final activeId = settingsBox.get('${userId}_active_profile_id') as String?;
   return activeId;
 });
 
 // Helper function to set the active profile ID and save it in Hive settings box
 void setActiveProfileId(WidgetRef ref, String? id) {
+  final authState = ref.read(authStateProvider);
+  final userId = authState.valueOrNull?.uid ?? 'guest';
   ref.read(activeProfileIdProvider.notifier).state = id;
   final settingsBox = Hive.box('settings');
-  settingsBox.put('active_profile_id', id);
+  settingsBox.put('${userId}_active_profile_id', id);
 }
 
 // Notifier for all user profiles, listens live to Hive box changes
@@ -31,8 +36,12 @@ class AllProfilesNotifier extends Notifier<List<UserProfile>> {
       _box.listenable().removeListener(_listener!);
     }
 
+    final authState = ref.watch(authStateProvider);
+    final userId = authState.valueOrNull?.uid ?? 'guest';
+
     _listener = () {
-      state = _box.values.toList();
+      final all = _box.values.toList();
+      state = all.where((p) => p.id.startsWith('${userId}_')).toList();
     };
 
     _box.listenable().addListener(_listener!);
@@ -43,7 +52,8 @@ class AllProfilesNotifier extends Notifier<List<UserProfile>> {
       }
     });
 
-    return _box.values.toList();
+    final all = _box.values.toList();
+    return all.where((p) => p.id.startsWith('${userId}_')).toList();
   }
 
   Future<UserProfile> addProfile(
@@ -55,7 +65,9 @@ class AllProfilesNotifier extends Notifier<List<UserProfile>> {
     String? heightUnit,
     String? photoBase64,
   }) async {
-    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final authState = ref.read(authStateProvider);
+    final userId = authState.valueOrNull?.uid ?? 'guest';
+    final id = '${userId}_${DateTime.now().microsecondsSinceEpoch.toString()}';
     final newProfile = UserProfile(
       id: id,
       name: name,
@@ -70,7 +82,7 @@ class AllProfilesNotifier extends Notifier<List<UserProfile>> {
     
     // Create initial weight entry in weight_entries box
     final weightBox = Hive.box<WeightEntry>('weight_entries');
-    final entryId = DateTime.now().microsecondsSinceEpoch.toString();
+    final entryId = '${userId}_${DateTime.now().microsecondsSinceEpoch.toString()}';
     final initialEntry = WeightEntry(
       id: entryId,
       profileId: id,
@@ -147,8 +159,12 @@ class WeightEntriesNotifier extends Notifier<List<WeightEntry>> {
       _box.listenable().removeListener(_listener!);
     }
 
+    final authState = ref.watch(authStateProvider);
+    final userId = authState.valueOrNull?.uid ?? 'guest';
+
     _listener = () {
-      state = _box.values.toList();
+      final all = _box.values.toList();
+      state = all.where((e) => e.profileId.startsWith('${userId}_')).toList();
     };
 
     _box.listenable().addListener(_listener!);
@@ -159,11 +175,14 @@ class WeightEntriesNotifier extends Notifier<List<WeightEntry>> {
       }
     });
 
-    return _box.values.toList();
+    final all = _box.values.toList();
+    return all.where((e) => e.profileId.startsWith('${userId}_')).toList();
   }
 
   Future<void> addEntry(String profileId, double weightKg, {DateTime? customDate}) async {
-    final id = DateTime.now().microsecondsSinceEpoch.toString();
+    final authState = ref.read(authStateProvider);
+    final userId = authState.valueOrNull?.uid ?? 'guest';
+    final id = '${userId}_${DateTime.now().microsecondsSinceEpoch.toString()}';
     final entry = WeightEntry(
       id: id,
       profileId: profileId,

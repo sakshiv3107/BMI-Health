@@ -41,13 +41,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     ref.listen<AsyncValue<void>>(
       authControllerProvider,
       (_, state) {
-        if (state.hasError) {
+        if (state.hasError && !state.isLoading) {
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.error.toString()),
               backgroundColor: AppColors.warning,
             ),
           );
+          ref.read(authControllerProvider.notifier).reset();
         }
       },
     );
@@ -290,10 +292,10 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                       borderRadius: BorderRadius.circular(24),
                     ),
                   ),
-                  icon: Image.network(
-                    'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
-                    height: 20,
-                  ),
+                  // icon: Image.network(
+                  //   'https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg',
+                  //   height: 20,
+                  // ),
                   label: const Text(
                     'Continue with Google',
                     style: TextStyle(

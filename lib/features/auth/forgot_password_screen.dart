@@ -32,14 +32,18 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     ref.listen<AsyncValue<void>>(
       authControllerProvider,
       (_, state) {
-        if (state.hasError) {
+        if (state.hasError && !state.isLoading) {
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.error.toString())),
           );
+          ref.read(authControllerProvider.notifier).reset();
         } else if (!state.isLoading && state.hasValue) {
-           ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Password reset email sent!')),
           );
+          ref.read(authControllerProvider.notifier).reset();
         }
       },
     );

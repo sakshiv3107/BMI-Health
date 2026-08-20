@@ -39,13 +39,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ref.listen<AsyncValue<void>>(
       authControllerProvider,
       (_, state) {
-        if (state.hasError) {
+        if (state.hasError && !state.isLoading) {
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.error.toString()),
               backgroundColor: AppColors.warning,
             ),
           );
+          ref.read(authControllerProvider.notifier).reset();
         }
       },
     );

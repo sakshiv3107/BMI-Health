@@ -41,6 +41,9 @@ class AuthRepository {
 
   Future<UserCredential?> signInWithGoogle() async {
     try {
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
         // The user canceled the sign-in
@@ -71,15 +74,18 @@ class AuthRepository {
 
   Future<void> signOut() async {
     try {
+      await _googleSignIn.disconnect();
+    } catch (_) {}
+    try {
       await _googleSignIn.signOut();
-    } catch (_) {
-      // Ignore errors if the user wasn't signed in with Google
-    }
+    } catch (_) {}
     await _firebaseAuth.signOut();
   }
 
   String _handleException(FirebaseAuthException e) {
     switch (e.code) {
+      case 'invalid-credential':
+        return 'Incorrect email or password.';
       case 'user-not-found':
         return 'No account found with this email.';
       case 'wrong-password':

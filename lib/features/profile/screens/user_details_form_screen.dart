@@ -55,7 +55,8 @@ class UserDetailsFormScreen extends ConsumerStatefulWidget {
 
 class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
+  final _nameController = TextEditingController();
+  final _weightController = TextEditingController();
 
   bool _isLoading = false;
   bool _isEditMode = false;
@@ -66,10 +67,9 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
   bool _genderTouched = false;
 
   // Selected value state for dropdowns
-  late double _selectedWeight;
-  late double _selectedHeight; // Height in CM when cm unit is active
-  late int _selectedFeet;
-  late int _selectedInches;
+  double? _selectedHeight; // Height in CM when cm unit is active
+  int? _selectedFeet;
+  int? _selectedInches;
 
   // Profile photo (held as base64 so it works on web + mobile)
   String? _pickedPhotoBase64;
@@ -100,49 +100,60 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
       }
     }
 
-    _nameController = TextEditingController(text: initialName);
+    _nameController.text = initialName;
 
-    // Initialize dropdown values
-    double weightVal = initialWeightKg > 0
-        ? _fromKg(initialWeightKg, _weightUnit)
-        : (_weightUnit == _WeightUnit.lbs ? 150.0 : 70.0);
-    _selectedWeight = _weightUnit == _WeightUnit.lbs
-        ? weightVal.roundToDouble().clamp(70.0, 450.0)
-        : ((weightVal * 2).round() / 2.0).clamp(30.0, 200.0);
-
-    double heightVal = initialHeightCm > 0
-        ? initialHeightCm
-        : 170.0;
-    _selectedHeight = heightVal.roundToDouble().clamp(100.0, 250.0);
-
-    final inchesTotal = heightVal / 2.54;
-    int ft = (inchesTotal / 12).floor();
-    int inc = (inchesTotal % 12).round();
-    if (inc == 12) {
-      ft += 1;
-      inc = 0;
+    String initialWeightStr = '';
+    if (initialWeightKg > 0) {
+      double weightVal = _fromKg(initialWeightKg, _weightUnit);
+      initialWeightStr = _weightUnit == _WeightUnit.lbs
+          ? weightVal.toStringAsFixed(0)
+          : weightVal.toStringAsFixed(1);
     }
-    _selectedFeet = ft.clamp(3, 8);
-    _selectedInches = inc.clamp(0, 11);
+    _weightController.text = initialWeightStr;
+
+    if (initialHeightCm > 0) {
+      _selectedHeight = initialHeightCm.roundToDouble().clamp(100.0, 250.0);
+
+      final inchesTotal = initialHeightCm / 2.54;
+      int ft = (inchesTotal / 12).floor();
+      int inc = (inchesTotal % 12).round();
+      if (inc == 12) {
+        ft += 1;
+        inc = 0;
+      }
+      _selectedFeet = ft.clamp(3, 8);
+      _selectedInches = inc.clamp(0, 11);
+    } else {
+      _selectedHeight = null;
+      _selectedFeet = null;
+      _selectedInches = null;
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
   // Called when weight unit toggle changes
   void _onWeightUnitChanged(_WeightUnit newUnit) {
     setState(() {
-      if (newUnit == _WeightUnit.kg) {
-        // lbs to kg
-        final inKg = _selectedWeight * 0.453592;
-        _selectedWeight = ((inKg * 2).round() / 2.0).clamp(30.0, 200.0);
-      } else {
-        // kg to lbs
-        final inLbs = _selectedWeight / 0.453592;
-        _selectedWeight = inLbs.roundToDouble().clamp(70.0, 450.0);
+      final text = _weightController.text.trim();
+      if (text.isNotEmpty) {
+        final val = double.tryParse(text);
+        if (val != null) {
+          if (newUnit == _WeightUnit.kg) {
+            // lbs to kg
+            final inKg = val * 0.453592;
+            _weightController.text = inKg.toStringAsFixed(1);
+          } else {
+            // kg to lbs
+            final inLbs = val / 0.453592;
+            _weightController.text = inLbs.toStringAsFixed(0);
+          }
+        }
       }
       _weightUnit = newUnit;
     });
@@ -153,20 +164,29 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
     setState(() {
       if (newUnit == _HeightUnit.cm) {
         // ft/in to cm
-        final inchesTotal = _selectedFeet * 12 + _selectedInches;
-        final inCm = inchesTotal * 2.54;
-        _selectedHeight = inCm.roundToDouble().clamp(100.0, 250.0);
+        if (_selectedFeet != null && _selectedInches != null) {
+          final inchesTotal = _selectedFeet! * 12 + _selectedInches!;
+          final inCm = inchesTotal * 2.54;
+          _selectedHeight = inCm.roundToDouble().clamp(100.0, 250.0);
+        } else {
+          _selectedHeight = null;
+        }
       } else {
         // cm to ft/in
-        final inchesTotal = _selectedHeight / 2.54;
-        int ft = (inchesTotal / 12).floor();
-        int inc = (inchesTotal % 12).round();
-        if (inc == 12) {
-          ft += 1;
-          inc = 0;
+        if (_selectedHeight != null) {
+          final inchesTotal = _selectedHeight! / 2.54;
+          int ft = (inchesTotal / 12).floor();
+          int inc = (inchesTotal % 12).round();
+          if (inc == 12) {
+            ft += 1;
+            inc = 0;
+          }
+          _selectedFeet = ft.clamp(3, 8);
+          _selectedInches = inc.clamp(0, 11);
+        } else {
+          _selectedFeet = null;
+          _selectedInches = null;
         }
-        _selectedFeet = ft.clamp(3, 8);
-        _selectedInches = inc.clamp(0, 11);
       }
       _heightUnit = newUnit;
     });
@@ -251,10 +271,10 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
     setState(() => _isLoading = true);
 
     final name = _nameController.text.trim();
-    final weightRaw = _selectedWeight;
+    final weightRaw = double.parse(_weightController.text.trim());
     final double heightRaw = _heightUnit == _HeightUnit.inches
-        ? (_selectedFeet * 12 + _selectedInches) * 1.0
-        : _selectedHeight;
+        ? (_selectedFeet! * 12 + _selectedInches!) * 1.0
+        : _selectedHeight!;
 
     // Convert to canonical units (kg, cm)
     final weightKg = _toKg(weightRaw, _weightUnit);
@@ -316,6 +336,11 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
               backgroundColor: AppColors.primary,
             ),
           );
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/');
+          }
         }
       }
     } catch (e) {
@@ -713,29 +738,32 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                           ],
                         ),
                         const SizedBox(height: 6),
-                        DropdownButtonFormField<double>(
-                          value: _selectedWeight,
+                        TextFormField(
+                          controller: _weightController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
                           decoration: InputDecoration(
                             prefixIcon: const Icon(Icons.monitor_weight_outlined),
                             labelText: _weightUnit == _WeightUnit.kg ? 'Weight (kg)' : 'Weight (lbs)',
+                            hintText: _weightUnit == _WeightUnit.kg ? 'e.g. 70.5' : 'e.g. 150',
                           ),
-                          items: (_weightUnit == _WeightUnit.kg
-                                  ? List.generate(341, (i) => 30.0 + i * 0.5)
-                                  : List.generate(381, (i) => 70.0 + i * 1.0))
-                              .map((val) {
-                            return DropdownMenuItem<double>(
-                              value: val,
-                              child: Text(_weightUnit == _WeightUnit.kg
-                                  ? '${val.toStringAsFixed(1)} kg'
-                                  : '${val.toStringAsFixed(0)} lbs'),
-                            );
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() {
-                                _selectedWeight = val;
-                              });
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return 'Please enter your weight';
                             }
+                            final val = double.tryParse(value.trim());
+                            if (val == null || val <= 0) {
+                              return 'Please enter a valid weight';
+                            }
+                            if (_weightUnit == _WeightUnit.kg) {
+                              if (val < 30.0 || val > 200.0) {
+                                return 'Weight must be between 30 and 200 kg';
+                              }
+                            } else {
+                              if (val < 70.0 || val > 450.0) {
+                                return 'Weight must be between 70 and 450 lbs';
+                              }
+                            }
+                            return null;
                           },
                         ),
                         const SizedBox(height: 24),
@@ -762,6 +790,7 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                               prefixIcon: Icon(Icons.height),
                               labelText: 'Height (cm)',
                             ),
+                            validator: (value) => value == null ? 'Please select your height' : null,
                             items: List.generate(151, (i) => 100.0 + i * 1.0).map((val) {
                               return DropdownMenuItem<double>(
                                 value: val,
@@ -786,6 +815,7 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                                     prefixIcon: Icon(Icons.height),
                                     labelText: 'Feet',
                                   ),
+                                  validator: (value) => value == null ? 'Select feet' : null,
                                   items: List.generate(6, (i) => 3 + i).map((val) {
                                     return DropdownMenuItem<int>(
                                       value: val,
@@ -808,6 +838,7 @@ class _UserDetailsFormScreenState extends ConsumerState<UserDetailsFormScreen> {
                                   decoration: const InputDecoration(
                                     labelText: 'Inches',
                                   ),
+                                  validator: (value) => value == null ? 'Select inches' : null,
                                   items: List.generate(12, (i) => i).map((val) {
                                     return DropdownMenuItem<int>(
                                       value: val,

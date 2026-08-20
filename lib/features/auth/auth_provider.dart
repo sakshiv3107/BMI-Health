@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:assignment/features/auth/auth_repository.dart';
+import 'package:assignment/core/widgets/bottom_nav_bar.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository();
@@ -44,6 +45,13 @@ class AuthController extends AsyncNotifier<void> {
 
   Future<void> signOut() async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => _authRepository.signOut());
+    state = await AsyncValue.guard(() async {
+      await _authRepository.signOut();
+      ref.read(bottomNavIndexProvider.notifier).state = 0;
+    });
+  }
+
+  void reset() {
+    state = const AsyncValue.data(null);
   }
 }

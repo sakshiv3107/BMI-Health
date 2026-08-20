@@ -40,6 +40,12 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
     String selectedUnit = weightUnit;
     double selectedWeightValue = displayWeight;
 
+    final weightController = TextEditingController(
+      text: selectedUnit == 'lbs'
+          ? selectedWeightValue.toStringAsFixed(0)
+          : selectedWeightValue.toStringAsFixed(1),
+    );
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -91,29 +97,31 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<double>(
-                            value: selectedWeightValue,
+                          child: TextFormField(
+                            controller: weightController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             decoration: const InputDecoration(
                               labelText: 'Weight',
                               prefixIcon: Icon(Icons.monitor_weight_outlined),
                             ),
-                            items: (selectedUnit == 'kg'
-                                    ? List.generate(341, (i) => 30.0 + i * 0.5)
-                                    : List.generate(381, (i) => 70.0 + i * 1.0))
-                                .map((val) {
-                              return DropdownMenuItem<double>(
-                                value: val,
-                                child: Text(selectedUnit == 'kg'
-                                    ? '${val.toStringAsFixed(1)} kg'
-                                    : '${val.toStringAsFixed(0)} lbs'),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setModalState(() {
-                                  selectedWeightValue = val;
-                                });
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Please enter your weight';
                               }
+                              final val = double.tryParse(value.trim());
+                              if (val == null || val <= 0) {
+                                return 'Please enter a valid weight';
+                              }
+                              if (selectedUnit == 'kg') {
+                                if (val < 30.0 || val > 200.0) {
+                                  return 'Weight must be between 30 and 200 kg';
+                                }
+                              } else {
+                                if (val < 70.0 || val > 450.0) {
+                                  return 'Weight must be between 70 and 450 lbs';
+                                }
+                              }
+                              return null;
                             },
                           ),
                         ),
@@ -131,12 +139,18 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                               final newUnit = index == 0 ? 'kg' : 'lbs';
                               if (newUnit == selectedUnit) return;
                               setModalState(() {
-                                if (newUnit == 'kg' && selectedUnit == 'lbs') {
-                                  final inKg = selectedWeightValue * 0.453592;
-                                  selectedWeightValue = ((inKg * 2).round() / 2.0).clamp(30.0, 200.0);
-                                } else if (newUnit == 'lbs' && selectedUnit == 'kg') {
-                                  final inLbs = selectedWeightValue / 0.453592;
-                                  selectedWeightValue = inLbs.roundToDouble().clamp(70.0, 450.0);
+                                final text = weightController.text.trim();
+                                if (text.isNotEmpty) {
+                                  final val = double.tryParse(text);
+                                  if (val != null) {
+                                    if (newUnit == 'kg' && selectedUnit == 'lbs') {
+                                      final inKg = val * 0.453592;
+                                      weightController.text = inKg.toStringAsFixed(1);
+                                    } else if (newUnit == 'lbs' && selectedUnit == 'kg') {
+                                      final inLbs = val / 0.453592;
+                                      weightController.text = inLbs.toStringAsFixed(0);
+                                    }
+                                  }
                                 }
                                 selectedUnit = newUnit;
                               });
@@ -207,7 +221,7 @@ class _WeightHistoryScreenState extends ConsumerState<WeightHistoryScreen> {
                     ElevatedButton(
                       onPressed: () async {
                         if (formKey.currentState!.validate()) {
-                          final displayW = selectedWeightValue;
+                          final displayW = double.parse(weightController.text.trim());
                           // Convert to canonical kg before storing
                           final weight = selectedUnit == 'lbs' ? displayW * 0.453592 : displayW;
                           await ref.read(weightEntriesProvider.notifier).addEntry(

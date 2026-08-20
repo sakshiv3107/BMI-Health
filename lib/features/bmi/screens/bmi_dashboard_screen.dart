@@ -75,6 +75,12 @@ class BmiDashboardScreen extends ConsumerWidget {
         ? selectedWeight.roundToDouble().clamp(70.0, 450.0)
         : ((selectedWeight * 2).round() / 2.0).clamp(30.0, 200.0);
 
+    final weightController = TextEditingController(
+      text: weightUnit == 'lbs'
+          ? selectedWeight.toStringAsFixed(0)
+          : selectedWeight.toStringAsFixed(1),
+    );
+
     double selectedHeight = profile.heightCm;
     selectedHeight = selectedHeight.roundToDouble().clamp(100.0, 250.0);
 
@@ -147,29 +153,32 @@ class BmiDashboardScreen extends ConsumerWidget {
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    DropdownButtonFormField<double>(
-                      value: selectedWeight,
+                    TextFormField(
+                      controller: weightController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
                         labelText: 'Weight (${weightUnit == 'lbs' ? 'lbs' : 'kg'})',
                         prefixIcon: const Icon(Icons.monitor_weight_outlined),
+                        hintText: weightUnit == 'lbs' ? 'e.g. 150' : 'e.g. 70.5',
                       ),
-                      items: (weightUnit == 'kg'
-                              ? List.generate(341, (i) => 30.0 + i * 0.5)
-                              : List.generate(381, (i) => 70.0 + i * 1.0))
-                          .map((val) {
-                        return DropdownMenuItem<double>(
-                          value: val,
-                          child: Text(weightUnit == 'kg'
-                              ? '${val.toStringAsFixed(1)} kg'
-                              : '${val.toStringAsFixed(0)} lbs'),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setModalState(() {
-                            selectedWeight = val;
-                          });
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter your weight';
                         }
+                        final val = double.tryParse(value.trim());
+                        if (val == null || val <= 0) {
+                          return 'Please enter a valid weight';
+                        }
+                        if (weightUnit == 'kg') {
+                          if (val < 30.0 || val > 200.0) {
+                            return 'Weight must be between 30 and 200 kg';
+                          }
+                        } else {
+                          if (val < 70.0 || val > 450.0) {
+                            return 'Weight must be between 70 and 450 lbs';
+                          }
+                        }
+                        return null;
                       },
                     ),
                     const SizedBox(height: 16),
@@ -247,7 +256,7 @@ class BmiDashboardScreen extends ConsumerWidget {
                     ElevatedButton(
                       onPressed: () async {
                         if (formKey.currentState!.validate()) {
-                          final displayW = selectedWeight;
+                          final displayW = double.parse(weightController.text.trim());
                           final displayH = heightUnit == 'inches'
                               ? (selectedFeet * 12 + selectedInches) * 1.0
                               : selectedHeight;
